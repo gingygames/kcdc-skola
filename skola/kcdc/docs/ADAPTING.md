@@ -13,16 +13,24 @@ Other resources can show any text "as this player reads it" (`filtrText`, `legib
 
 ## Package layout
 
-| Resource | Required | What it contains |
+One resource, **`skola`**. Inside it the default UI is a detachable module:
+
+| Part | Where | What it contains |
 |---|---|---|
-| `skola` | yes | Core. Server rules, storage, permissions, translations, world interaction (reading over a sheet, finger pointing, equipment placement), native-menu fallback. |
-| `skola-ui` | default, replaceable | Our UI: the school panel (web view on the right) and the lesson card. It depends on `skola` and attaches with `skola.setUi`. |
+| core | `src/server.ts`, `src/client.ts`, `src/ui-jadro.ts`, `src/umistovani.ts`, `src/shared/` | server rules, storage, permissions, translations, world interaction (reading over a sheet, finger pointing, equipment placement), native-menu fallback |
+| default UI | `src/vychozi-ui/` + pages `ui/` | the school panel (web view on the right) and the lesson card, built on the shared `ui-kit` look; attached through the same contract (`src/ui-api.ts`) any other UI uses. The core imports it in exactly one place (`client.ts`, `nastavitVychoziUi`) |
+
+| Dependency | | |
+|---|---|---|
 | `kresby` | optional | Boards and sheets are drawing boards of `kresby`. Without it, reading still works but nothing can be drawn or placed. |
 | `most` | optional | Framework bridge (identity, permissions, storage, money, menus). Without it a built-in shim is used. |
 | `sprava` | optional | F10 admin panel and the settings editor (F10 → Settings → School). |
 
-Build: `cd skola/kcdc && npm install && npm test` creates `dist/skola` and `dist/skola-ui`.
-`node tools/build.mjs --out <server>/resources/skola` deploys both (`skola-ui` goes next to it).
+Detach the default UI: `SKOLA_CONFIG.ui = false` (native menu and info text only, or your UI), or attach your own
+with `setUi` from your resource: it replaces the default, and the default comes back when your resource stops.
+
+Build: `cd skola/kcdc && npm install && npm test` creates `dist/skola`.
+`node tools/build.mjs --out <server>/resources/skola` deploys it.
 
 **Rule of thumb:** never fork the core to change UI, wording, roles or storage. Each has an extension point below.
 If something cannot be done through them, extend the extension point (and its tests), not the call sites.
@@ -30,8 +38,8 @@ If something cannot be done through them, extend the extension point (and its te
 ## Architecture in one picture
 
 ```
- server (skola)                         client (skola)                    client (skola-ui or yours)
- ───────────────                        ──────────────                    ──────────────────────────
+ server (skola)                         client (skola)                    UI: src/vychozi-ui/ or yours
+ ───────────────                        ──────────────                    ────────────────────────────
  rules, lessons, XP, storage            reading overlay (Scaleform),      panel: shows UiView, returns
  builds UiView per player  ──skola:ui──▶ finger, placement (PropPlacer),──▶ action ids  (PanelBackend)
  executes action ids  ◀──skola:uiAkce── language, card state       ◀──── card: shows KartaStav (KartaBackend)
@@ -160,7 +168,9 @@ missing glyphs.
 
 ## 4. Replacing the UI
 
-Do not edit `skola-ui` for a different look: write your own UI resource and do not deploy `skola-ui`.
+Do not edit `src/vychozi-ui/` for a different look: write your own UI resource and attach it with `setUi`. It
+replaces the default UI at runtime (no config change needed); set `SKOLA_CONFIG.ui = false` if you want the default
+never to appear (not even before your resource starts or after it stops).
 Contract: `src/ui-api.ts` (version `VERZE_UI = 1`).
 
 ```js
@@ -218,7 +228,7 @@ F10 → School → *Debug: module state* shows the same for any player.
 2. Map your permission system: hook `opravneni`, or grant `skola.ucit` / `skola.admin` / `skola.debug` /
    `skola.<capability>` nodes through `most`.
 3. Language: hook `jazyk`, server default in F10, extra languages via `addTranslations`. Load a matching primer.
-4. UI: keep `skola-ui`, or attach your own with `setUi` and stop deploying `skola-ui`. Render every action id.
+4. UI: keep the default UI, or attach your own with `setUi` (optionally `SKOLA_CONFIG.ui = false`). Render every action id.
 5. Run `npm test` in `skola/kcdc` after any change in this package; add tests next to the extension point you touched.
 6. Verify in game: open the panel (`/skola`), place a board and a desk, run a lesson, read over a sheet and leave
    it with **Esc**, end the lesson with XP, switch language with `/skola jazyk en`.

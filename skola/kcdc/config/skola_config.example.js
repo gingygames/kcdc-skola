@@ -7,6 +7,7 @@ globalThis.SKOLA_CONFIG = {
   admini: [],            // přezdívky adminů (právo "skola.admin"), když neběží most
   ucitele: [],           // přezdívky písařů (právo "skola.ucit"), když neběží most; "*" = všichni
   ladici: [],            // přezdívky ladičů (právo "skola.debug": /skola debug), když neběží most
+  ui: true,              // výchozí UI školy (panel a karta); false = jen UI frameworku (setUi), jinak nativní nabídka hry
   // opravneni: {         // schopnost -> role (student, teacher, admin, debug); výchozí v src/opravneni.ts
   //   "lesson.xp": ["admin"],              // XP na konci hodiny rozdá jen admin
   //   "debug.view": ["teacher", "debug"],  // písař vidí /skola debug stav

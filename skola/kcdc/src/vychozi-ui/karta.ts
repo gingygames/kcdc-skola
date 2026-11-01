@@ -1,15 +1,15 @@
-// Výchozí UI školy (resource skola-ui) - karta hodiny: malý web view na kraji obrazovky (ui/karta.html), bez
-// fokusu, takže nebere myš ani klávesy. Co ukázat a kdy smí být vidět, rozhoduje jádro (KartaStav); karta jen kreslí
+// Výchozí UI školy (modul src/vychozi-ui/, odpojitelný: SKOLA_CONFIG.ui = false nebo setUi jiného resource) - karta
+// hodiny: malý web view na kraji obrazovky (ui/karta.html), bez fokusu, takže nebere myš ani klávesy. Co ukázat a kdy smí být vidět, rozhoduje jádro (KartaStav); karta jen kreslí
 // a podle výšky obsahu zmenší web view. Dokud stránka není hotová, aktivni() = false a jádro ukazuje infotext.
 
 import { KARTA, type KartaMsg } from "../shared/ui";
 import type { KartaBackend, KartaStav, SkolaUiApi } from "../ui-api";
 
-const URL = "fw://resources/skola-ui/ui/karta.html";
+const URL = "fw://resources/skola/ui/karta.html";
 const OKRAJ = 16;
 const TEXTY = "skola:texty";
 
-const log = (t: string) => console.log("[skola-ui] " + t);
+const log = (t: string) => console.log("[skola] " + t);
 const maWeb = () => typeof Web !== "undefined" && !!Web;
 
 export function vytvoritKartu(): KartaBackend {

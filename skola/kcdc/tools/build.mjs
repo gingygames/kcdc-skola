@@ -1,8 +1,7 @@
-// Sestaví dva resource pro Kingdoms Connected:
-//   dist/skola     jádro: server.js, client.js (čtení, stavba, záloha bez UI), package.json, skola_config.js
-//   dist/skola-ui  výchozí UI: client.js (panel ve web view a karta hodiny), server.js, ui/ s ui-kitem z ../../ui-kit
-// a dist/ui-dev-texty.json (slovníky stránek pro náhled tools/ui-dev/).
-//   node tools/build.mjs [--out <složka resources/skola na serveru KCDC>]   (skola-ui jde vedle: <out>/../skola-ui)
+// Sestaví resource "skola" pro Kingdoms Connected do dist/skola/: server.js, client.js (jádro + výchozí UI jako
+// odpojitelný modul src/vychozi-ui/), package.json, skola_config.js a ui/ (stránky panelu a karty se sdílenou sadou
+// vzhledu ui-kit z ../../ui-kit). Navíc dist/ui-dev-texty.json (slovníky stránek pro náhled tools/ui-dev/).
+//   node tools/build.mjs [--out <složka resources/skola na serveru KCDC>]
 // Sdílí shim most, panel sprava a pole nastavení s loutnou (../../loutna/kcdc/src), kodek, geometrii listů a
 // Scaleform kreslení s kresbami (../../kresby/kcdc/src) - esbuild je přibalí.
 import { execFileSync } from "node:child_process";
@@ -13,7 +12,6 @@ import { copyKit } from "../../../ui-kit/copy.mjs";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const dist = join(root, "dist", "skola");
-const distUi = join(root, "dist", "skola-ui");
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const arg = (name) => {
   const i = process.argv.indexOf(name);
@@ -27,27 +25,24 @@ const bundle = (entry, out, extra = []) =>
 node(["typescript", "bin", "tsc"], "-p", join(root, "tsconfig.server.json"));
 node(["typescript", "bin", "tsc"], "-p", join(root, "tsconfig.client.json"));
 mkdirSync(dist, { recursive: true });
-mkdirSync(distUi, { recursive: true });
+rmSync(join(root, "dist", "skola-ui"), { recursive: true, force: true }); // UI bylo chvíli samostatný resource
 bundle("src/server.ts", join(dist, "server.js"));
 bundle("src/client.ts", join(dist, "client.js"));
-bundle("src/vychozi-ui/main.ts", join(distUi, "client.js"));
-bundle("src/vychozi-ui/server.ts", join(distUi, "server.js"));
-// jádro už stránky nemá (dřív dist/skola/ui)
+// stránky výchozího UI + sdílená sada vzhledu (kopie se needituje)
 rmSync(join(dist, "ui"), { recursive: true, force: true });
-// výchozí UI: stránky modulu + sdílená sada vzhledu (kopie se needituje)
-rmSync(join(distUi, "ui"), { recursive: true, force: true });
-cpSync(join(root, "ui"), join(distUi, "ui"), { recursive: true });
-copyKit(join(distUi, "ui", "kit"));
+cpSync(join(root, "ui"), join(dist, "ui"), { recursive: true });
+copyKit(join(dist, "ui", "kit"));
 
 const manifest = {
   name: "skola",
   version: pkg.version,
-  description: "Škola: výuka čtení a psaní u písaře (tabule a listy z kreseb), XP gramotnosti a postupná čitelnost textů. Jádro bez UI: panel a kartu dodá skola-ui nebo UI frameworku (setUi).",
+  description: "Škola: výuka čtení a psaní u písaře (tabule a listy z kreseb), XP gramotnosti a postupná čitelnost textů. Výchozí UI je odpojitelné (SKOLA_CONFIG.ui, setUi).",
   mafiahub: {
     serverScripts: ["skola_config.js", "server.js"],
     clientScripts: ["client.js"],
+    files: ["ui/**"],
     // závislosti startují dřív a modul se s nimi restartuje; bez nich běží dál (optional).
-    // Na sprava ani skola-ui záviset nesmí: sprava závisí na modulech, skola-ui na škole (cyklus).
+    // Na sprava záviset nesmí: sprava závisí na modulech (cyklus).
     resourceDependencies: [{ name: "most", optional: true }, { name: "kresby", optional: true }],
     exports: [
       // server
@@ -60,21 +55,6 @@ const manifest = {
   },
 };
 writeFileSync(join(dist, "package.json"), JSON.stringify(manifest, null, 2) + "\n");
-const manifestUi = {
-  name: "skola-ui",
-  version: pkg.version,
-  description: "Výchozí UI školy: panel školy (web view vpravo) a karta hodiny. Nahraditelné vlastním UI frameworku (skola.setUi).",
-  mafiahub: {
-    serverScripts: ["server.js"],
-    clientScripts: ["client.js"],
-    files: ["ui/**"],
-    // UI potřebuje jádro: startuje po něm a restartuje se s ním
-    resourceDependencies: [{ name: "skola" }],
-    exports: [],
-    errorBehavior: "continue",
-  },
-};
-writeFileSync(join(distUi, "package.json"), JSON.stringify(manifestUi, null, 2) + "\n");
 const config = join(dist, "skola_config.js");
 if (!existsSync(config)) copyFileSync(join(root, "config", "skola_config.example.js"), config);
 
@@ -87,16 +67,14 @@ if (!existsSync(config)) copyFileSync(join(root, "config", "skola_config.example
 }
 
 const kb = (f) => (readFileSync(f).length / 1024).toFixed(1);
-console.log(`skola (KCDC): server ${kb(join(dist, "server.js"))} KB, client ${kb(join(dist, "client.js"))} KB -> dist/skola; skola-ui client ${kb(join(distUi, "client.js"))} KB -> dist/skola-ui`);
+console.log(`skola (KCDC): server ${kb(join(dist, "server.js"))} KB, client ${kb(join(dist, "client.js"))} KB -> dist/skola`);
 
 const out = arg("--out");
 if (out) {
   mkdirSync(out, { recursive: true });
   for (const f of ["server.js", "client.js", "package.json"]) copyFileSync(join(dist, f), join(out, f));
-  rmSync(join(out, "ui"), { recursive: true, force: true }); // stránky má teď skola-ui
+  rmSync(join(out, "ui"), { recursive: true, force: true });
+  cpSync(join(dist, "ui"), join(out, "ui"), { recursive: true });
   if (!existsSync(join(out, "skola_config.js"))) copyFileSync(config, join(out, "skola_config.js"));
-  const outUi = join(dirname(out), "skola-ui");
-  rmSync(outUi, { recursive: true, force: true });
-  cpSync(distUi, outUi, { recursive: true });
-  console.log(`nasazeno do ${out} a ${outUi} (skola_config.js se nepřepisuje)`);
+  console.log("nasazeno do " + out + " (skola_config.js se nepřepisuje)");
 }

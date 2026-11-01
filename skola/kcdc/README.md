@@ -4,13 +4,13 @@ Výuka čtení a psaní u písaře pro **Kingdoms Connected**. Písař si s prů
 
 ```
 cd skola/kcdc && npm install && npm test        # build + testy (jádro, jazyky a oprávnění, server, klient)
-node tools/build.mjs --out <server>/resources/skola   # nasadí skola i skola-ui (vedle)
-node playground/nasadit.mjs --jen skola,skola-ui     # z kořene repa: lokální playground
+node tools/build.mjs --out <server>/resources/skola
+node playground/nasadit.mjs --jen skola        # z kořene repa: lokální playground
 ```
 
-**Balíček k publikaci:** resource `skola` (jádro: pravidla, čtení, stavba, oprávnění, překlady, záloha bez UI) a `skola-ui` (výchozí UI: panel a karta hodiny, nahraditelné). Vícejazyčná (cs, en; další jazyk konfigem nebo exportem), napojitelná na jakýkoli framework háčky a schopnostmi. Návod pro servery a agenty (anglicky): **[docs/ADAPTING.md](docs/ADAPTING.md)**.
+**Balíček k publikaci:** jeden resource `skola`. Výchozí UI (panel a karta hodiny na sdílené sadě vzhledu `ui-kit`) je v něm jako odpojitelný modul `src/vychozi-ui/`: vypne ho `SKOLA_CONFIG.ui = false`, nahradí ho UI frameworku přes `setUi`. Vícejazyčná (cs, en; další jazyk konfigem nebo exportem), napojitelná na jakýkoli framework háčky a schopnostmi. Návod pro servery a agenty (anglicky): **[docs/ADAPTING.md](docs/ADAPTING.md)**.
 
-*English: the school is a literacy system for Kingdoms Connected. Packages `skola` (core) and `skola-ui` (default, replaceable UI). Czech and English built in. Integration guide for frameworks, UIs, permissions and translations: [docs/ADAPTING.md](docs/ADAPTING.md).*
+*English: the school is a literacy system for Kingdoms Connected, one resource `skola` with a detachable default UI. Czech and English built in. Integration guide for frameworks, UIs, permissions and translations: [docs/ADAPTING.md](docs/ADAPTING.md).*
 
 ## Ovládání
 
@@ -107,7 +107,7 @@ Podrobně a anglicky pro jiné servery a agenty: [docs/ADAPTING.md](docs/ADAPTIN
 
 - **Oprávnění** (`src/opravneni.ts`): škola se ptá jen na schopnosti (`lesson.run`, `lesson.xp`, `class.manage`, `xp.edit`, `settings.edit`, `debug.view` …), každá má výchozí role: **student** (každý), **teacher** = `skola.ucit`, **admin** = `skola.admin` (nebo `admin`, smí všechno), **debug** = `skola.debug` (ladič: `/skola debug`, F10 → Škola → Ladění). Pořadí: háček `opravneni` → jemné právo `skola.<schopnost>` → role. Přemapování bez kódu `SKOLA_CONFIG.opravneni`, bez mostu seznamy `ucitele` / `admini` / `ladici`.
 - **Jazyky** (`src/shared/i18n.ts`, slovníky `src/lang/`): vestavěné cs (zdroj pravdy) a en. Jazyk hráče: `/skola jazyk` → háček `jazyk` → výchozí serveru (F10 → Nastavení → Škola → Jazyk). Další jazyk: `SKOLA_CONFIG.jazyky` nebo export `addTranslations`. Slabikář jazyka: F10 → Škola → Načíst slabikář jazyka (cs, en).
-- **UI** je vyměnitelné: výchozí resource `skola-ui`, jinak vlastní přes klientský export `setUi` (smlouva `src/ui-api.ts`). Bez UI nativní nabídka a infotext.
+- **UI** je vyměnitelné: výchozí modul `src/vychozi-ui/` (stránky `ui/`, ui-kit) jde vypnout `SKOLA_CONFIG.ui = false` nebo nahradit vlastním přes klientský export `setUi` (smlouva `src/ui-api.ts`; když cizí UI skončí, výchozí se vrátí). Bez UI nativní nabídka a infotext.
 - Háčky (`SKOLA_CONFIG.hooks` nebo za běhu `Exports.get("skola", "setHooks")({ ... }, "muj-framework")`, zmizí se zastavením vlastníka):
 
 | Háček | Výchozí | K čemu |
@@ -145,4 +145,4 @@ Náhled kreslí stejným rastrem jako server kreseb: tabule stránek (i s obráz
 5. Překryv nad ležícím listem ze sedu, prst (plynulost, kroužek u písaře), konec hodiny formulářem, `player.addXp("scholarship")`.
 6. **Esc ze čtení** (i po `/skola cist` z konzole Správy, z nápovědy u stolu, při kontrole písanky písařem): hlava se zvedne, kamera a ovládání se vrátí. Kurzor při čtení jen s fokusem obrazovky (log `čtení: obrazovka nemá fokus`, když ho hra nedá).
 7. Jazyk: `/skola jazyk en` přepne panel, kartu, nápovědu i oznámení; F10 → Škola → Načíst slabikář jazyka.
-8. Bez `skola-ui` (nenasazené): `/skola` ukáže nativní nabídku, stav hodiny infotext.
+8. S `SKOLA_CONFIG.ui = false`: `/skola` ukáže nativní nabídku, stav hodiny infotext.

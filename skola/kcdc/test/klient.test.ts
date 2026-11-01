@@ -2,24 +2,21 @@
 // view): panel (transport stránky), umisťování (PropPlacer), sklonit se nad list, text přefiltrovaný vlastní
 // gramotností, prst, zvednout hlavu, značka prstu u učitele.
 import { readFileSync } from "node:fs";
-import vm from "node:vm";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Vec, makeClient } from "../../../kresby/kcdc/test/fake";
 import { PRAVIDLA } from "../src/shared/citelnost";
 
 const script = readFileSync(join(import.meta.dirname, "..", "dist", "skola", "client.js"), "utf8");
-const scriptUi = readFileSync(join(import.meta.dirname, "..", "dist", "skola-ui", "client.js"), "utf8"); // výchozí UI (resource skola-ui)
 const NL = String.fromCharCode(10);
 const LIST = { pos: [10, 1.2, 0.806], n: [0, -0.139, 0.99], w: 0.34, h: 0.227 };
 
-/** klient školy; ui = i výchozí UI (skola-ui) ve stejném klientu, připojené přes Exports skola.setUi */
+/** klient školy; ui = false: server výchozí UI vypnul (SKOLA_CONFIG.ui = false -> skola:konfig) */
 function klient(ui = true) {
   const sent: [string, any][] = [];
   const c = makeClient((n, p) => void sent.push([n, p]), { script });
   Object.assign((c.ctx as any).Web, { resizeView: () => true, setViewPosition: () => true }); // falešný klient kreseb je nemá
-  (c.ctx as any).Exports.get = (_r: string, n: string) => c.exportsReg.get(n);
-  if (ui) vm.runInContext(scriptUi, c.ctx);
+  if (!ui) c.deliver("skola:konfig", JSON.stringify({ ui: false }));
   return { ...c, sent, posl: (ev: string) => sent.filter(([n]) => n === ev).map(([, p]) => p) };
 }
 const bezTextu = (e: [string, any][]) => e.filter(([n]) => n !== "skola:texty");
@@ -209,7 +206,7 @@ describe("klient školy", () => {
 
   it("panel: stránka se nahraje předem, pohled ze serveru dostane až po hello, akce a zavření jdou serveru", async () => {
     const c = klient();
-    expect(c.views.map((v) => v.url)).toEqual(["fw://resources/skola-ui/ui/index.html", "fw://resources/skola-ui/ui/karta.html"]); // nahrané předem, schované
+    expect(c.views.map((v) => v.url)).toEqual(["fw://resources/skola/ui/index.html", "fw://resources/skola/ui/karta.html"]); // nahrané předem, schované
     const v = c.views[0];
     const pohled = { seq: 3, obrazovka: "trida", ucitel: true, titulek: "Škola", ja: {}, akce: [] };
     c.deliver("skola:ui", JSON.stringify(pohled));
@@ -237,10 +234,11 @@ describe("klient školy", () => {
     expect(v.shown).toBe(false);
   });
 
-  it("bez UI (skola-ui nenasazené): panel = nativní nabídka serveru, karta = infotext", async () => {
+  it("výchozí UI vypnuté (SKOLA_CONFIG.ui = false): panel = nativní nabídka serveru, karta = infotext", async () => {
     const c = klient(false);
-    expect(c.views).toEqual([]);
+    c.views.forEach((v) => v.handlers.get("skola:uiHello")?.()); // stránky se nahrály, ale UI je odpojené
     c.deliver("skola:ui", JSON.stringify({ seq: 1, obrazovka: "trida", ucitel: true, titulek: "Škola", ja: {}, akce: [] }));
+    expect(c.views.some((v) => v.shown)).toBe(false);
     expect(c.posl("skola:uiOtevrit")).toEqual([{ web: false }]);
     const hodina = { role: "zak", ucitel: "Henry", strana: "A a", pismeno: "a", minut: 3, minMinut: 10, zadani: null, cte: null, ja: { sedi: true, ctu: false, pisanka: null, nazev: "Písmena", xp: 12, od: 10, do: 18, dalsi: "písmeno E" } };
     c.deliver("skola:karta", JSON.stringify({ nastaveni: { zapnuto: true, strana: "vpravo", vyska: 22 }, hodina }));
@@ -248,8 +246,10 @@ describe("klient školy", () => {
     expect(c.notices.at(-1)).toBe("Hodina u Henry: A a"); // bez karty jde stav do infotextu
   });
 
-  it("vlastní UI frameworku přes setUi: dostane pohled, akce a zavření jdou serveru, texty v jazyce hráče", async () => {
-    const c = klient(false);
+  it("vlastní UI frameworku přes setUi nahradí výchozí; když jeho resource skončí, výchozí se vrátí", async () => {
+    const c = klient();
+    const vychozi = c.views[0];
+    vychozi.handlers.get("skola:uiHello")!();
     const setUi = c.exportsReg.get("setUi") as (ui: object, owner: string) => boolean;
     const pohledy: any[] = [];
     let api: any = null;
@@ -260,6 +260,7 @@ describe("klient školy", () => {
     expect(c.posl("skola:uiOtevrit")).toEqual([{ web: true }]);
     c.deliver("skola:ui", JSON.stringify({ seq: 7, obrazovka: "trida", ucitel: true, titulek: "Škola", ja: {}, akce: [] }));
     expect(pohledy.map((v) => v.seq)).toEqual([7]);
+    expect(vychozi.shown).toBe(false); // výchozí panel je odpojený
     api.akce("hodina:zacit");
     expect(c.posl("skola:uiAkce")).toEqual([{ seq: 7, id: "hodina:zacit" }]);
     api.zavreno();
@@ -276,6 +277,12 @@ describe("klient školy", () => {
     expect(zmena).toBe("en");
     expect(api.t("page.close")).toBe("Close!"); // texty od serveru mají přednost (úpravy, další jazyky)
     expect(api.texty(["card."])["card.nobody"]).toBe("Nobody in the lesson yet.");
+    // framework skončil: zpátky výchozí UI školy
+    c.deliver("resourceStop", "muj-fw");
+    await vi.advanceTimersByTimeAsync(1600); // panel hráč výše zavřel: pohled na cestě ho 1,5 s neotevře
+    c.deliver("skola:ui", JSON.stringify({ seq: 8, obrazovka: "trida", ucitel: true, titulek: "Škola", ja: {}, akce: [] }));
+    expect(pohledy).toHaveLength(1);
+    expect(vychozi.shown).toBe(true);
   });
 
   it("jazyk hráče: nápověda u stolu a texty stránky anglicky", async () => {

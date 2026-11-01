@@ -14,6 +14,7 @@ export const EV = {
   xp: "skola:xp", // XpMsg: zisk gramotnosti (HUD)
   okoli: "skola:okoli", // OkoliMsg: místa u stolů a tabule tříd poblíž (nápověda akce)
   jazyk: "skola:jazyk", // JazykMsg: jazyk hráče a texty klienta a stránek UI
+  konfig: "skola:konfig", // KonfigMsg: nastavení klienta ze serveru (výchozí UI zapnuté?)
   // klient -> server
   menu: "skola:menu", // klávesa panelu (starší klient; nový posílá skola:uiOtevrit)
   sklonit: "skola:sklonit", // klávesa: skloň se nad čítanku (u stolu)
@@ -78,4 +79,9 @@ export interface JazykMsg {
   jazyk: string;
   vychozi: string;
   texty: Record<string, string>;
+}
+
+/** nastavení klienta ze serveru: ui = false vypne výchozí UI školy (panel a karta; SKOLA_CONFIG.ui) */
+export interface KonfigMsg {
+  ui: boolean;
 }

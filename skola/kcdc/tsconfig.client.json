@@ -18,7 +18,6 @@
     "src/ui-jadro.ts",
     "src/ui-api.ts",
     "src/umistovani.ts",
-    "src/vychozi-ui/main.ts",
     "src/vychozi-ui/panel.ts",
     "src/vychozi-ui/karta.ts",
     "src/lang/*-klient.ts",

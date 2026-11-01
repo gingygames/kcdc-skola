@@ -35,7 +35,7 @@ import { SLABIKARE, type Strana } from "./data";
 import { T, ZDROJ, jazyky, kodJazyka, maJazyk, oblast, odebratVlastnika, prekladac, pridatPreklady, tz, type Parametry, type Prekladac, type Slovnik, type Zprava } from "./shared/i18n";
 import { nahratVestavene } from "./lang";
 import { SEZNAM_SCHOPNOSTI, vytvoritOpravneni, type HacekOpravneni, type Role, type Schopnost } from "./opravneni";
-import type { JazykMsg } from "./shared/protocol";
+import type { JazykMsg, KonfigMsg } from "./shared/protocol";
 
 // ---------------------------------------------------------------------------
 // nastavení a napojení
@@ -60,6 +60,8 @@ interface Config {
   admini: string[];
   ucitele: string[]; // záloha bez mostu: přezdívky písařů ("*" = všichni)
   ladici: string[]; // záloha bez mostu: přezdívky ladičů (právo skola.debug)
+  /** výchozí UI školy (panel a karta, src/vychozi-ui/); false = jen UI frameworku přes setUi, jinak nativní nabídka */
+  ui: boolean;
   hooks?: Partial<Hooky>;
   /** přemapování schopností na role: { "lesson.xp": ["admin"] } (src/opravneni.ts SCHOPNOSTI) */
   opravneni?: Partial<Record<Schopnost, Role[]>>;
@@ -74,6 +76,7 @@ const CFG: Config = {
   admini: [],
   ucitele: [],
   ladici: [],
+  ui: true,
   ...(typeof SKOLA_CONFIG !== "undefined" ? SKOLA_CONFIG : {}),
 };
 
@@ -2025,6 +2028,7 @@ Events.onClient(EV.prst, (p: unknown, m: unknown) => prst(p as Player, typeof m 
 Events.onClient(EV.psat, (p: unknown) => void safely("písanka", psatPisanku(p as Player).then((r) => notify(p as Player, r.text))));
 
 Events.on("playerReady", (p: Player) => {
+  send(p, EV.konfig, { ui: CFG.ui !== false } satisfies KonfigMsg);
   void safely("jazyk", nactiJazyk(p));
   void safely("profil", nactiProfil(p).then(() => poslatProfil(p)));
 });
@@ -2315,6 +2319,7 @@ Events.on("resourceStart", (name: string) => {
   if (name === "most") setTimeout(() => void safely("načíst", nacist()), 400);
   if (name === "kresby" && bezi) napojitKresby();
   if (name !== "skola" || bezi) return;
+  for (const p of Player.all()) send(p, EV.konfig, { ui: CFG.ui !== false } satisfies KonfigMsg); // restart školy: klienti už připojení
   bezi = true;
   panel.attempt();
   popsatPrikazy();

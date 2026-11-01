@@ -1,9 +1,10 @@
 // Škola - jádro UI v klientu: jazyk klienta, registr UI (export setUi), přenos panelu mezi serverem a UI a skládání
-// karty hodiny. Samotné UI (web view panelu a karty) je vyměnitelné: výchozí je resource skola-ui (src/vychozi-ui/),
-// smlouva v src/ui-api.ts. Bez UI: panel = nativní nabídka (server, web:false), karta = infotext hry (client.ts).
+// karty hodiny. Samotné UI (web view panelu a karty) je vyměnitelné: výchozí je modul src/vychozi-ui/ přibalený ve
+// škole, jiný resource ho nahradí exportem setUi, server ho vypne SKOLA_CONFIG.ui = false. Smlouva v src/ui-api.ts.
+// Bez UI: panel = nativní nabídka (server, web:false), karta = infotext hry (client.ts).
 
 import { KARTA, UI, type KartaMsg, type KartaUkaz, type UiView } from "./shared/ui";
-import { EV, type JazykMsg } from "./shared/protocol";
+import { EV, type JazykMsg, type KonfigMsg } from "./shared/protocol";
 import { ZDROJ, kodJazyka, oblast, pridatPreklady, t, type Parametry, type Slovnik } from "./shared/i18n";
 import csKlient from "./lang/cs-klient";
 import enKlient from "./lang/en-klient";
@@ -126,6 +127,30 @@ export function setUi(x: Partial<SkolaUi> | null, owner: string): boolean {
 
 export const maPanel = () => !!ui.panel;
 
+// výchozí UI (src/vychozi-ui/, přibalené ve škole): platí, dokud ho nevymění jiný resource (setUi) nebo ho server
+// nevypne (SKOLA_CONFIG.ui = false -> EV.konfig). Když cizí UI skončí, vrátí se výchozí (nebo záloha bez UI).
+const VLASTNI = "skola";
+let vychoziUi: SkolaUi | null = null;
+let vychoziPovoleno = true;
+
+function pouzitVychozi() {
+  setUi(vychoziPovoleno && vychoziUi ? vychoziUi : { panel: null, karta: null }, VLASTNI);
+}
+
+/** client.ts: výchozí UI školy; použije se hned, pokud zrovna neplatí cizí */
+export function nastavitVychoziUi(x: SkolaUi) {
+  vychoziUi = x;
+  if (!ui.owner || ui.owner === VLASTNI) pouzitVychozi();
+}
+
+Events.on(EV.konfig, (m: unknown) => {
+  const x = parse(m) as KonfigMsg | null;
+  if (!x) return;
+  const pred = vychoziPovoleno;
+  vychoziPovoleno = x.ui !== false;
+  if (pred !== vychoziPovoleno && (!ui.owner || ui.owner === VLASTNI)) pouzitVychozi();
+});
+
 Events.on("resourceStop", (name: string) => {
   if (name === "skola") {
     schovatPanel();
@@ -134,9 +159,9 @@ Events.on("resourceStop", (name: string) => {
     return;
   }
   if (name !== ui.owner) return;
-  log(`UI ${name} skončilo: záloha jádra`);
+  log(`UI ${name} skončilo: ${vychoziPovoleno && vychoziUi ? "zpět výchozí UI školy" : "záloha jádra"}`);
   naJazyk.length = 0;
-  setUi({ panel: null, karta: null }, name);
+  pouzitVychozi();
 });
 
 // ---------------------------------------------------------------------------

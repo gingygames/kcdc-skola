@@ -1,16 +1,16 @@
-// Výchozí UI školy (resource skola-ui) - panel: web view ui/index.html vpravo na obrazovce (ui-kit).
-// Stránka dostane slovník page.* (skola:texty) a pohled UiView (skola:ui) a vrací id akcí (skola:uiAkce).
+// Výchozí UI školy (modul src/vychozi-ui/, odpojitelný: SKOLA_CONFIG.ui = false nebo setUi jiného resource) - panel:
+// web view ui/index.html vpravo (ui-kit). Stránka dostane slovník page.* (skola:texty) a pohled UiView (skola:ui) a vrací id akcí (skola:uiAkce).
 // Stránka se nahraje předem schovaná, ať se panel ukáže hned. Pravidla a texty pohledu má server.
 
 import { UI, type UiView } from "../shared/ui";
 import type { PanelBackend, SkolaUiApi } from "../ui-api";
 
-const VIEW_URL = "fw://resources/skola-ui/ui/index.html";
+const VIEW_URL = "fw://resources/skola/ui/index.html";
 const SIRKA = 0.36; // pravá část obrazovky, třída zůstává vidět vlevo
 const MIN_SIRKA = 440;
 export const TEXTY = "skola:texty"; // klient -> stránka: slovník oblasti page.* a jazyk
 
-const log = (t: string) => console.log("[skola-ui] " + t);
+const log = (t: string) => console.log("[skola] " + t);
 const asObject = (m: unknown): any => {
   if (typeof m === "string")
     try {

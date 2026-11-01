@@ -19,7 +19,6 @@
     "src/nastaveni.ts",
     "src/shared/*.ts",
     "src/opravneni.ts",
-    "src/lang/*.ts",
-    "src/vychozi-ui/server.ts"
+    "src/lang/*.ts"
   ]
 }

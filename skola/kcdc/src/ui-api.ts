@@ -1,5 +1,6 @@
-// Smlouva mezi jádrem školy (klient resource "skola") a UI. Výchozí UI je resource "skola-ui" (panel ve web view
-// a karta hodiny, src/vychozi-ui/); jiný framework ho nahradí vlastním resource, který zavolá:
+// Smlouva mezi jádrem školy (klient resource "skola") a UI. Výchozí UI je odpojitelný modul src/vychozi-ui/ (panel
+// ve web view a karta hodiny), přibalený ve škole. Vypne ho SKOLA_CONFIG.ui = false; jiný framework ho nahradí
+// z vlastního resource (když ten resource skončí, výchozí UI se vrátí):
 //
 //   const setUi = Exports.get("skola", "setUi") as (ui: Partial<SkolaUi>, owner: string) => boolean;
 //   setUi({ panel: mujPanel, karta: mojeKarta }, "muj-framework");     // null = žádný (záloha jádra)

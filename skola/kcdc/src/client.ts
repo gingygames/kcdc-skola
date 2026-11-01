@@ -5,7 +5,7 @@
 // Čtení: kamera plynule přeletí nad list na stole (Camera.setShot, jako prohlížení kreseb) a přes list se položí
 // obrazovka Scaleform: podklad listu, obrázek stránky a text stránky ručním písmem (shared/pismo.ts), přefiltrovaný
 // podle gramotnosti tohohle hráče (shared/citelnost.ts). Dva studenti na stejném listu vidí každý něco jiného.
-// Panel a karta hodiny jsou vyměnitelné UI (src/ui-api.ts, src/ui-jadro.ts; výchozí resource skola-ui).
+// Panel a karta hodiny jsou vyměnitelné UI (src/ui-api.ts, src/ui-jadro.ts; výchozí modul src/vychozi-ui/).
 // Zvednout hlavu: Esc, W/A/S/D, tlačítko Zavřít nebo /skola cist. Když učitel řekl „čti“, kurzor je prst: poloha na listu jde serveru
 // (~10× za s) a s ní index slova pod prstem; učitel vidí značku na listu (Gizmos) a skutečné slovo v infotextu.
 
@@ -17,8 +17,11 @@ import { PRAVIDLA, filtr, stav, type Pravidla } from "./shared/citelnost";
 import { slovoNa, type Slovo } from "./shared/pismo";
 import { listCteni } from "./sazba";
 import { EV, type CteniMsg, type ListFace, type OkoliMsg, type PrstMsg, type ProfilMsg, type XpMsg } from "./shared/protocol";
-import { karta, kartaAktivni, obnovitKartu, otevritPanel, pozastavitPanel, setUi, tk } from "./ui-jadro";
+import { karta, kartaAktivni, nastavitVychoziUi, obnovitKartu, otevritPanel, pozastavitPanel, setUi, tk } from "./ui-jadro";
 import "./umistovani";
+// výchozí UI (panel a karta hodiny) je odpojitelný modul: jádro ho nikde jinde neimportuje
+import { vytvoritPanel } from "./vychozi-ui/panel";
+import { vytvoritKartu } from "./vychozi-ui/karta";
 
 const log = (t: string) => console.log("[skola] " + t);
 const GLIDE = 650;
@@ -540,6 +543,9 @@ Events.on("resourceStart", (name: string) => void (name === "kresby" && napojitK
 // start
 
 karta.cteni(() => !!cteni);
+
+// výchozí UI školy; vlastní UI jiného resource ho vymění exportem setUi, SKOLA_CONFIG.ui = false ho vypne
+nastavitVychoziUi({ panel: vytvoritPanel(), karta: vytvoritKartu() });
 
 // API pro jiné klientské resources: vlastní UI (src/ui-api.ts, docs/ADAPTING.md), stav čtení
 Exports.register("setUi", setUi);
