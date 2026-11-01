@@ -31,6 +31,7 @@ let veto = false;
 let postaveno = 0;
 
 const OBRYS = "umistit-obrys";
+let posledniObrys = "";
 const ZELENA = 0xff7fd18b;
 const CERVENA = 0xffe0645a;
 
@@ -75,6 +76,10 @@ function kreslitObrys() {
     veto = spatne;
     PropPlacer.setVeto(spatne);
   }
+  // obrys jen při změně pózy (zaokrouhleně na cm a desetinu stupně): Gizmos.set 20× za s by se jinak volalo i v klidu
+  const sig = [pose.position.x, pose.position.y, pose.position.z, n[0], n[1], n[2]].map((x) => Math.round(x * 100)).join() + "," + Math.round(yawZ(pose.rotation) * 10) + (spatne ? "!" : "");
+  if (sig === posledniObrys) return;
+  posledniObrys = sig;
   try {
     const body = obdelnik(v3(pose.position), n, m.obrys.w, m.obrys.h, m.druh === "misto", yawZ(pose.rotation));
     Gizmos.set(OBRYS, { type: "polyline", points: body.map((p) => ({ x: p[0], y: p[1], z: p[2] })) }, { color: spatne ? CERVENA : ZELENA, width: 3, depthTest: false });
@@ -94,6 +99,7 @@ function konecUmistovani(oznamit: boolean) {
   if (obrysTimer) clearInterval(obrysTimer);
   obrysTimer = null;
   veto = false;
+  posledniObrys = "";
   try {
     Gizmos.remove(OBRYS);
   } catch {

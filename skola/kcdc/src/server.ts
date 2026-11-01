@@ -356,19 +356,36 @@ function yawHrace(p: Player): number {
 const tridaU = (p: Player, polomer = N.hodina.polomer) =>
   tridy.filter((t) => t.vw === (p.virtualWorld ?? 0) && dist(p.position, t.pos) <= polomer).sort((a, b) => dist(p.position, a.pos) - dist(p.position, b.pos))[0] ?? null;
 
-function mistoU(p: Player): { t: Trida; i: number; m: Misto } | null {
+// Kdo u kterého místa sedí: volá se pro každého žáka v kartách (1 s), stavu hodiny a panelu. Poloha se čte jednou
+// (nativní getter), třídy daleko se přeskočí (místa jsou nejvýš poloměr třídy od jejího středu), čtverce vzdáleností
+// a krátká mezipaměť 250 ms jen pro hromadné průchody (karty, stav hodiny, panel); akce hráče počítají vždy znovu.
+const mistoCache = new Map<number, { at: number; r: { t: Trida; i: number; m: Misto } | null }>();
+function mistoU(p: Player, zMezipameti = false): { t: Trida; i: number; m: Misto } | null {
+  const now = Date.now();
+  const c = zMezipameti ? mistoCache.get(p.id) : undefined;
+  if (c && now - c.at < 250) return c.r;
+  const pp = p.position;
+  const px = pp.x, py = pp.y, pz = pp.z;
+  const vw = p.virtualWorld ?? 0;
+  const dosah = N.hodina.dosahStolu;
+  const daleko = (N.hodina.polomer + dosah) ** 2;
   let best: { t: Trida; i: number; m: Misto } | null = null;
-  let bd = N.hodina.dosahStolu;
+  let bd = dosah * dosah;
   for (const t of tridy) {
-    if (t.vw !== (p.virtualWorld ?? 0)) continue;
-    t.mista.forEach((m, i) => {
-      const d = dist(p.position, m.pos);
+    if (t.vw !== vw || !t.mista.length) continue;
+    const tx = t.pos[0] - px, ty = t.pos[1] - py, tz = t.pos[2] - pz;
+    if (tx * tx + ty * ty + tz * tz > daleko) continue;
+    for (let i = 0; i < t.mista.length; i++) {
+      const m = t.mista[i];
+      const dx = m.pos[0] - px, dy = m.pos[1] - py, dz = m.pos[2] - pz;
+      const d = dx * dx + dy * dy + dz * dz;
       if (d <= bd) {
         bd = d;
         best = { t, i, m };
       }
-    });
+    }
   }
+  mistoCache.set(p.id, { at: now, r: best });
   return best;
 }
 
@@ -684,20 +701,30 @@ const hodinaUcitele = (p: Player) => [...hodiny.values()].find((h) => h.ucitel =
 const hodinaStudenta = (p: Player) => [...hodiny.values()].find((h) => h.ucastnici.has(p.id)) ?? null;
 const strana = (t: Trida): Strana => N.slabikar[Math.max(0, Math.min(N.slabikar.length - 1, t.strana))] ?? N.slabikar[0];
 
+/** stavový řádek hodiny (infotext): jen při změně textu, ať klient nepřepisuje infotext hry ani jiných modulů */
+const stavPoslany = new Map<number, string | null>();
+function poslatStav(p: Player, text: string | null) {
+  if (stavPoslany.get(p.id) === text) return;
+  if (text === null && !stavPoslany.has(p.id)) return;
+  if (text === null) stavPoslany.delete(p.id);
+  else stavPoslany.set(p.id, text);
+  send(p, EV.stav, { text });
+}
+
 function infoHodiny(h: Hodina) {
   const u = Player.getById(h.ucitel);
   const s = strana(h.t);
   if (u) {
     const t = tr(u);
     const cte = h.cte !== null ? t("msg.status.reading", { name: Player.getById(h.cte)?.nickname ?? "?" }) : "";
-    send(u, EV.stav, { text: t("msg.status.teacher", { page: s.nazev, n: h.ucastnici.size, reading: cte, cmd: CFG.command }) });
+    poslatStav(u, t("msg.status.teacher", { page: s.nazev, n: h.ucastnici.size, reading: cte, cmd: CFG.command }));
   }
   for (const id of h.ucastnici.keys()) {
     const p = Player.getById(id);
     if (!p) continue;
     const t = tr(p);
-    const kde = mistoU(p) ? t("msg.status.leanOver", { cmd: CFG.command }) : t("msg.status.sitDown");
-    send(p, EV.stav, { text: t("msg.status.student", { teacher: u?.nickname ?? t("msg.scribeGen"), page: s.nazev, where: kde, reading: h.cte === id ? t("msg.status.readAloud") : "" }) });
+    const kde = mistoU(p, true) ? t("msg.status.leanOver", { cmd: CFG.command }) : t("msg.status.sitDown");
+    poslatStav(p, t("msg.status.student", { teacher: u?.nickname ?? t("msg.scribeGen"), page: s.nazev, where: kde, reading: h.cte === id ? t("msg.status.readAloud") : "" }));
   }
 }
 
@@ -773,7 +800,7 @@ function kartaHrace(p: Player): KartaMsg["hodina"] {
       ...zaklad, role: "ucitel",
       zaci: [...h.ucastnici.values()].map((u) => {
         const x = Player.getById(u.pid);
-        return { jmeno: u.jmeno, sedi: !!x && mistoU(x)?.t === h.t, cte: h.cte === u.pid, pisanka: h.pisanky.get(u.pid)?.stav ?? null };
+        return { jmeno: u.jmeno, sedi: !!x && mistoU(x, true)?.t === h.t, cte: h.cte === u.pid, pisanka: h.pisanky.get(u.pid)?.stav ?? null };
       }),
     };
   }
@@ -781,7 +808,7 @@ function kartaHrace(p: Player): KartaMsg["hodina"] {
   const st = stav(xp, N.pravidla);
   return {
     ...zaklad, role: "zak",
-    ja: { sedi: mistoU(p)?.t === h.t, ctu: h.cte === p.id, pisanka: h.pisanky.get(p.id)?.stav ?? null, nazev: nazevStupne(t, st), xp, od: xpOd(st), do: st.dalsi?.xp ?? null, dalsi: dalsiText(t, st) },
+    ja: { sedi: mistoU(p, true)?.t === h.t, ctu: h.cte === p.id, pisanka: h.pisanky.get(p.id)?.stav ?? null, nazev: nazevStupne(t, st), xp, od: xpOd(st), do: st.dalsi?.xp ?? null, dalsi: dalsiText(t, st) },
   };
 }
 
@@ -823,7 +850,7 @@ function ukoncitHodinu(t: Trida, oznamit = true) {
   for (const id of [...h.ucastnici.keys(), h.ucitel]) {
     const p = Player.getById(id);
     if (!p) continue;
-    send(p, EV.stav, { text: null });
+    poslatStav(p, null);
     if (ctenari.get(id)?.t === t) zvednout(p);
     if (oznamit && id !== h.ucitel) info(p, T("msg.lesson.ended"));
   }
@@ -1352,8 +1379,9 @@ function hodinaUi(h: Hodina, tt: Prekladac): NonNullable<UiView["hodina"]> {
       const pl = Player.getById(u.pid);
       return {
         pid: u.pid, jmeno: u.jmeno, stupen: nazevStupne(tt, st), xp: profily.get(u.pid)?.p.xp ?? 0,
-        pritomnost: Math.min(100, Math.round((u.ms / Math.max(1, Date.now() - h.zacatek)) * 100)),
-        sedi: !!pl && mistoU(pl)?.t === t, cte: h.cte === u.pid, cetl: u.cetl, psal: u.psal,
+        // po 5 %: panel písaře se pak neposílá znovu každých 5 s jen kvůli pohybu docházky
+        pritomnost: Math.min(100, Math.floor(((u.ms / Math.max(1, Date.now() - h.zacatek)) * 100) / 5) * 5),
+        sedi: !!pl && mistoU(pl, true)?.t === t, cte: h.cte === u.pid, cetl: u.cetl, psal: u.psal,
         pisanka: x ? { skore: Math.round(x.skore * 100) / 100, stav: x.stav } : null, navrh: navrh(h, u),
       };
     }),
@@ -1503,7 +1531,17 @@ async function obnovit(p: Player, hlaska?: Vysledek, otevrit = false): Promise<v
 }
 
 /** po 5 s: otevřené panely při hodině (příchody, přítomnost, písanky) jen při změně */
+let obnovaBezi = false;
 async function obnovitPanely() {
+  if (obnovaBezi) return; // pomalý háček frameworku: další průchod nezačne, dokud tenhle neskončí
+  obnovaBezi = true;
+  try {
+    await obnovitPanelyTed();
+  } finally {
+    obnovaBezi = false;
+  }
+}
+async function obnovitPanelyTed() {
   for (const [id, pn] of panely) {
     if (!pn.otevreny || pn.umistuje || !pn.web || pn.konec) continue; // formulář konce hodiny se nepřekresluje pod rukama
     const p = Player.getById(id);
@@ -2048,6 +2086,8 @@ Events.on("playerDisconnect", (p: Player) => {
   kTabuli.delete(p.id);
   okoliPoslane.delete(p.id);
   kartyPoslane.delete(p.id);
+  stavPoslany.delete(p.id);
+  mistoCache.delete(p.id);
   panely.delete(p.id);
   umistovani.delete(p.id);
   jazykHracu.delete(p.id);

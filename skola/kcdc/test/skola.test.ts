@@ -604,3 +604,20 @@ describe("škola: opravy z recenze (jazyk po startu, regionální kódy, schopno
     expect(await profil.handler({ caller: s.hans, params: { hrac: s.hans } })).toMatchObject({ ok: true }); // svou ano
   });
 });
+
+describe("škola: výkon (audit 1. 11.)", () => {
+  beforeEach(() => void vi.useFakeTimers({ now: Date.UTC(2026, 9, 29, 9) }));
+  afterEach(() => void vi.useRealTimers());
+
+  it("stav hodiny (infotext) se posílá jen při změně, ne každých 5 s", async () => {
+    const s = server();
+    await trida(s);
+    await s.akce(s.henry, "hodina:zacit");
+    const pocet = () => s.hans.emitted.filter(([n]: any) => n === "skola:stav").length;
+    await vi.advanceTimersByTimeAsync(6000);
+    const po = pocet();
+    expect(po).toBeGreaterThan(0);
+    await vi.advanceTimersByTimeAsync(30000); // 6 ticků bez změny
+    expect(pocet()).toBe(po);
+  });
+});

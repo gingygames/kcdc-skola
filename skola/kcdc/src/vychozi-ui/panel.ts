@@ -103,7 +103,10 @@ export function vytvoritPanel(): PanelBackend {
     pripojit(a) {
       api = a;
       a.naJazyk(() => poslatTexty());
-      if (maWeb()) sView(() => undefined); // stránku nahrát předem: první otevření je hned
+    },
+    // stránku nahrát předem až u třídy (jádro volá pripravit): hráči, kteří škole nevěnují, web view nemají
+    pripravit() {
+      if (maWeb()) sView(() => undefined);
     },
     odpojit() {
       schovat();

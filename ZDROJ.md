@@ -1,6 +1,6 @@
 # Source / Zdroj
 
-Generated from [gingygames/gingy-kcdc](https://github.com/gingygames/gingy-kcdc) `skola/kcdc` at commit `5cd6562` by `tools/zrcadlo.mjs`.
+Generated from [gingygames/gingy-kcdc](https://github.com/gingygames/gingy-kcdc) `skola/kcdc` at commit `b3bb2a5` by `tools/zrcadlo.mjs`.
 This repository is a mirror: change the code in gingy-kcdc, not here (pull requests here get ported by hand).
 
 Shared code copied from other parts of gingy-kcdc (same folder layout, so relative imports work unchanged):

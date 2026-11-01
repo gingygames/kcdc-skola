@@ -93,7 +93,10 @@ export function vytvoritKartu(): KartaBackend {
         poslatTexty();
         if (posledni) ukazat(posledni);
       });
-      if (maWeb()) vytvorit(); // stránku nahrát předem (schovanou): karta se pak ukáže hned se začátkem hodiny
+    },
+    // stránku nahrát předem až u třídy: karta se pak ukáže hned se začátkem hodiny
+    pripravit() {
+      if (maWeb()) vytvorit();
     },
     odpojit() {
       if (view >= 0 && ukazana) Web.hideView(view);

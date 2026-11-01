@@ -63,7 +63,11 @@ Page preview without the game: serve the repo root over HTTP and open `skola/kcd
    the cursor hidden). Keep `klient.test.ts` green.
 7. The literacy filter is 1:1 per character (word indices map the finger to words). Change it only with
    `test/jadro.test.ts`.
-8. Keep ADAPTING.md in sync with hooks, exports, capabilities and the UI contract when you change them.
+8. **Performance:** send messages only on change and only to players they concern; the game info text is shared with
+   other resources, so set it only when your text changes and hide only what you showed; idle clients (no class
+   within 60 m) do no work and create no web views (`pripravitUi`). Measure new timers with the fake server and
+   64 players before adding them.
+9. Keep ADAPTING.md in sync with hooks, exports, capabilities and the UI contract when you change them.
 
 ## Before you finish
 

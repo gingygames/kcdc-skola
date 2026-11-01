@@ -46,6 +46,8 @@ export interface PanelBackend {
   pripraveny?(): boolean;
   /** UI se připojilo k jádru */
   pripojit?(api: SkolaUiApi): void;
+  /** hráč je u třídy nebo chce panel: čas nahrát stránku předem (dřív se nic vytvářet nemusí) */
+  pripravit?(): void;
   /** jádro končí (resourceStop) nebo UI vyměnil jiný resource */
   odpojit?(): void;
 }
@@ -65,6 +67,8 @@ export interface KartaBackend {
   /** karta teď stav opravdu ukazuje (jádro pak nedává totéž do infotextu) */
   aktivni(): boolean;
   pripojit?(api: SkolaUiApi): void;
+  /** hráč je u třídy: čas nahrát stránku předem */
+  pripravit?(): void;
   odpojit?(): void;
 }
 

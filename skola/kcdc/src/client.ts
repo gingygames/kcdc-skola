@@ -17,7 +17,7 @@ import { PRAVIDLA, filtr, stav, type Pravidla } from "./shared/citelnost";
 import { slovoNa, type Slovo } from "./shared/pismo";
 import { listCteni } from "./sazba";
 import { EV, type CteniMsg, type ListFace, type OkoliMsg, type PrstMsg, type ProfilMsg, type XpMsg } from "./shared/protocol";
-import { karta, kartaAktivni, nastavitVychoziUi, obnovitKartu, otevritPanel, pozastavitPanel, setUi, tk } from "./ui-jadro";
+import { karta, kartaAktivni, kartaMaObsah, nastavitVychoziUi, obnovitKartu, otevritPanel, pozastavitPanel, pripravitUi, setUi, tk } from "./ui-jadro";
 import "./umistovani";
 // výchozí UI (panel a karta hodiny) je odpojitelný modul: jádro ho nikde jinde neimportuje
 import { vytvoritPanel } from "./vychozi-ui/panel";
@@ -54,22 +54,25 @@ Events.on(EV.info, (m: unknown) => {
 });
 
 Events.on(EV.stav, (m: unknown) => {
-  infotext = parse<{ text: string | null }>(m)?.text ?? null;
+  const t = parse<{ text: string | null }>(m)?.text ?? null;
+  if (t === infotext) return;
+  infotext = t;
   ukazInfotext(true);
 });
 
-// infotext hry: stav hodiny + nápověda kláves u stolu a tabule (při čtení má infotext čtení)
+// Infotext hry je sdílený s ostatními moduly (kresby, loutna …): škola ho mění jen při změně svého textu a schová
+// jen to, co sama ukázala (ukazano). Dřív ho přepisovala / schovávala i bez změny každých 60 s.
 let napoveda = "";
-let ukazano: string | null = null;
-let ukazanoKdy = 0;
+let ukazano = ""; // co škola teď v infotextu ukazuje ("" = nic)
+const UKAZANO_CTENI = String.fromCharCode(0) + "cteni"; // infotext čtení nad listem
 function ukazInfotext(hned = false) {
   if (cteni) return;
   karta.klavesy(napoveda);
   // karta hodiny ukazuje stav hodiny i klávesy sama: infotext by opakoval totéž
   const t = kartaAktivni() ? "" : [infotext, napoveda].filter(Boolean).join(String.fromCharCode(10));
-  if (!hned && t === ukazano && Date.now() - ukazanoKdy < 60000) return;
+  if (!t && !ukazano) return; // nic neukazujeme: cizí infotext nechat být
+  if (t === ukazano && !hned) return;
   ukazano = t;
-  ukazanoKdy = Date.now();
   try {
     if (t) Hud.showInfoText(t, 3600000);
     else Hud.hideInfoText();
@@ -320,6 +323,7 @@ async function otevritCteni(m: CteniMsg) {
   if (cteni !== c) return;
   try {
     Hud.showInfoText(tk(m.prst ? "client.read.hintFinger" : "client.read.hint", { cmd: "/skola cist" }), 3600000);
+    ukazano = UKAZANO_CTENI; // po zvednutí hlavy ho ukazInfotext schová
   } catch {
     // bez HUD
   }
@@ -387,6 +391,7 @@ Events.on(EV.prstUcitel, (raw: unknown) => {
       // nic
     }
     znacky.delete(m.pid);
+    prstText = "";
     karta.prst(null);
     ukazInfotext(true);
     return;
@@ -411,14 +416,19 @@ Events.on(EV.prstUcitel, (raw: unknown) => {
     : m.vidi && m.vidi !== m.slovo
       ? tk("client.finger.wordSees", { name: m.jmeno, word: m.slovo, sees: m.vidi })
       : tk("client.finger.word", { name: m.jmeno, word: m.slovo });
+  // ~10× za s při čtení nahlas: kartu a infotext jen při změně slova (poloha značky se mění, text ne)
+  if (text === prstText) return;
+  prstText = text;
   karta.prst(text);
   if (kartaAktivni()) return;
   try {
     Hud.showInfoText(text, 3600000);
+    ukazano = text;
   } catch {
     // nic
   }
 });
+let prstText = "";
 
 // ---------------------------------------------------------------------------
 // nápověda u stolu a u tabule: nativní nápověda akce hry na ovládání, které tam KCDC skriptům nabízí (ne „použít“:
@@ -430,6 +440,7 @@ let okoli: OkoliMsg = { dosah: 1.6, tridy: [] };
 Events.on(EV.okoli, (m: unknown) => {
   const o = parse<OkoliMsg>(m);
   if (o && Array.isArray(o.tridy)) okoli = o;
+  if (okoli.tridy.length) pripravitUi(); // třída do 60 m: web view panelu a karty nahrát předem (jinak se nevytváří)
 });
 
 function mojePoloha(): V3 | null {
@@ -493,7 +504,7 @@ function hint(klic: string, text: string | null, akce: () => void): boolean {
     return true;
   }
   try {
-    if (!ActionHint.keys().includes(klic)) return false;
+    if (!klavesyNapovedy().includes(klic)) return false;
     if (!h) hinty.set(klic, { id: ActionHint.create({ key: klic, text }, () => hinty.get(klic)?.akce()), text, akce });
     else {
       h.akce = akce;
@@ -505,7 +516,16 @@ function hint(klic: string, text: string | null, akce: () => void): boolean {
   }
 }
 
+/** klávesy, které hra u nápovědy akce nabízí (seznam se nemění často: jednou za 10 s místo každých 250 ms) */
+let klavesyCache: { at: number; k: string[] } = { at: 0, k: [] };
+function klavesyNapovedy(): string[] {
+  if (Date.now() - klavesyCache.at > 10000) klavesyCache = { at: Date.now(), k: ActionHint.keys() };
+  return klavesyCache.k;
+}
+
 function hlidatNapovedu() {
+  // nečinný hráč (žádná třída poblíž, nečte, nic neukazujeme): nic nevolat (poloha, dialog, karta)
+  if (!okoli.tridy.length && !cteni && !hinty.size && !napoveda && !kartaMaObsah()) return;
   // otevřel se herní dialog nebo nabídka jiného modulu: zvednout hlavu, ať čtení nedrží kameru a ovládání
   try {
     if (cteni && Hud.isInDialogue()) zvednout(true);

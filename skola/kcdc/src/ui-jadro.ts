@@ -61,6 +61,7 @@ Events.on(EV.jazyk, (m: unknown) => {
 // registr UI
 
 const ui: SkolaUi & { owner: string | null } = { panel: null, karta: null, owner: null };
+let pripraveno = false; // pripravitUi už proběhlo (třída poblíž): nově připojené UI se připraví hned
 let posledniSeq = 0;
 let ukazany = false; // panel je vidět
 let zavrenoKdy = 0; // hráč panel zavřel: pohled, který byl zrovna na cestě, ho znovu neotevře
@@ -126,13 +127,19 @@ export function setUi(x: Partial<SkolaUi> | null, owner: string): boolean {
     }
     const novy = ui.panel !== (x.panel ?? null);
     ui.panel = x.panel ?? null;
-    if (novy && ui.panel) ui.panel.pripojit?.(apiPro(ui.panel));
+    if (novy && ui.panel) {
+      ui.panel.pripojit?.(apiPro(ui.panel));
+      if (pripraveno) ui.panel.pripravit?.();
+    }
   }
   if ("karta" in x) {
     if (ui.karta !== x.karta) odpojit(ui.karta);
     const nova = ui.karta !== (x.karta ?? null);
     ui.karta = x.karta ?? null;
-    if (nova && ui.karta) ui.karta.pripojit?.(apiPro(ui.karta));
+    if (nova && ui.karta) {
+      ui.karta.pripojit?.(apiPro(ui.karta));
+      if (pripraveno) ui.karta.pripravit?.();
+    }
     poslanoKarte = "";
   }
   // vlastník platí i pro setUi({ panel: null, karta: null }): když jeho resource skončí, vrátí se výchozí UI
@@ -228,6 +235,7 @@ Events.on(UI.zavrit, () => {
 /** otevřít panel (příkaz /skola přes server, nápověda akce u tabule) */
 export function otevritPanel() {
   if (pozastaveno) return;
+  pripravitUi();
   zavrenoKdy = 0;
   const p = ui.panel;
   emit(UI.otevrit, { web: !!p });
@@ -276,6 +284,22 @@ function vDialogu(): boolean {
     return Hud.isInDialogue();
   } catch {
     return false;
+  }
+}
+
+/** karta má co ukázat (hodina nebo stavba): klient pak hlídá dialog a čtení i bez třídy poblíž */
+export const kartaMaObsah = () => obsahKarty() !== null;
+
+/** třída je poblíž (nebo hráč chce panel): UI si může předem nahrát stránky; bez toho je nemusí vůbec vytvářet */
+export function pripravitUi() {
+  if (pripraveno) return;
+  pripraveno = true;
+  for (const b of [ui.panel, ui.karta]) {
+    try {
+      b?.pripravit?.();
+    } catch (e) {
+      log("příprava UI: " + String(e));
+    }
   }
 }
 

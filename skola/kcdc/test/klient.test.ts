@@ -12,11 +12,13 @@ const NL = String.fromCharCode(10);
 const LIST = { pos: [10, 1.2, 0.806], n: [0, -0.139, 0.99], w: 0.34, h: 0.227 };
 
 /** klient školy; ui = false: server výchozí UI vypnul (SKOLA_CONFIG.ui = false -> skola:konfig) */
-function klient(ui = true) {
+function klient(ui = true, blizko = true) {
   const sent: [string, any][] = [];
   const c = makeClient((n, p) => void sent.push([n, p]), { script });
   Object.assign((c.ctx as any).Web, { resizeView: () => true, setViewPosition: () => true }); // falešný klient kreseb je nemá
   if (!ui) c.deliver("skola:konfig", JSON.stringify({ ui: false }));
+  // třída do 60 m (daleko od hráče, bez nápovědy): výchozí UI si nahraje stránky předem (bez třídy je nevytváří)
+  if (blizko) c.deliver("skola:okoli", JSON.stringify({ dosah: 1.6, tridy: [{ id: 99, mista: [[500, 500, 0]], tabule: null, zadani: false, moje: false }] }));
   return { ...c, sent, posl: (ev: string) => sent.filter(([n]) => n === ev).map(([, p]) => p) };
 }
 const bezTextu = (e: [string, any][]) => e.filter(([n]) => n !== "skola:texty");
@@ -56,6 +58,19 @@ describe("klient školy", () => {
     expect(c.posl("skola:zvednout")).toHaveLength(1);
     await vi.advanceTimersByTimeAsync(700);
     expect(c.controls.off).toBe(0);
+  });
+
+  it("výkon: hráč bez třídy poblíž nemá web view školy a škola nesahá na infotext; stejný stav se nepřekresluje", async () => {
+    const c = klient(true, false);
+    expect(c.views).toEqual([]); // web view až u třídy nebo při /skola
+    const pred = c.notices.length;
+    await vi.advanceTimersByTimeAsync(70000); // dřív každých 60 s Hud.hideInfoText i u nečinného hráče
+    expect(c.notices.length).toBe(pred);
+    c.deliver("skola:stav", JSON.stringify({ text: "Hodina u Henry: A a" }));
+    c.deliver("skola:stav", JSON.stringify({ text: "Hodina u Henry: A a" }));
+    expect(c.notices.filter((t) => t === "Hodina u Henry: A a")).toHaveLength(1);
+    c.deliver("skola:okoli", JSON.stringify({ dosah: 1.6, tridy: [{ id: 1, mista: [[500, 500, 0]], tabule: null, zadani: false, moje: false }] }));
+    expect(c.views.map((v) => v.url)).toEqual(["fw://resources/skola/ui/index.html", "fw://resources/skola/ui/karta.html"]);
   });
 
   it("Esc jde vždycky: obrazovka bez fokusu (konzole, chat) schová kurzor, ať klávesy hry Esc pustí; fokus zpět = kurzor zpět", async () => {
