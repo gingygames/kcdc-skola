@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<title>Škola – náhled panelu</title>
+<!-- Náhled panelu mimo hru: python -m http.server v kořeni repa, pak /skola/kcdc/tools/ui-dev/?p=hodina
+     Pohledy jsou skutečné výstupy serveru z testů (SKOLA_UI_DUMP=1 npm test → pohledy.json). -->
+<style>
+  html, body { margin: 0; height: 100%; background: #3a4a3a url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><rect width='40' height='40' fill='%23445'/><path d='M0 40L40 0' stroke='%23556' stroke-width='2'/></svg>"); font: 13px system-ui; }
+  #vyber { position: fixed; left: 12px; top: 12px; z-index: 5; display: flex; gap: 6px; flex-wrap: wrap; max-width: 55vw; }
+  #vyber button { padding: 6px 10px; border-radius: 6px; border: 1px solid #888; background: #222; color: #eee; cursor: pointer; }
+  #vyber button.on { background: #e0aa4a; color: #111; }
+  iframe { position: fixed; top: 0; right: 0; width: 36vw; min-width: 440px; height: 100%; border: 0; }
+</style>
+</head>
+<body>
+<div id="vyber"></div>
+<iframe id="panel" src="panel.html"></iframe>
+<script>
+  var p = new URLSearchParams(location.search).get("p") || "trida";
+  var lang = new URLSearchParams(location.search).get("lang") || "cs"; // texty z buildu: npm run build → dist/ui-dev-texty.json
+  var texty = fetch("../../dist/ui-dev-texty.json").then(function (r) { return r.json(); }).catch(function () { return {}; });
+  fetch("pohledy.json").then(function (r) { return r.json(); }).then(function (all) {
+    var f = document.getElementById("panel");
+    var ukaz = function (k) {
+      document.querySelectorAll("#vyber button").forEach(function (b) { b.className = b.textContent === k ? "on" : ""; });
+      texty.then(function (t) {
+        f.contentWindow.dispatchEvent(new CustomEvent("skola:texty", { detail: { jazyk: lang, texty: t[lang] || {} } }));
+        f.contentWindow.dispatchEvent(new CustomEvent("skola:ui", { detail: all[k] }));
+      });
+    };
+    Object.keys(all).forEach(function (k) {
+      var b = document.createElement("button");
+      b.textContent = k;
+      b.onclick = function () { ukaz(k); };
+      document.getElementById("vyber").appendChild(b);
+    });
+    f.addEventListener("load", function () { ukaz(p); });
+    if (f.contentDocument && f.contentDocument.readyState === "complete") ukaz(p);
+  });
+</script>
+</body>
+</html>

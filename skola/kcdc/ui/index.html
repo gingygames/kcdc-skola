@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<title>Škola · School</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="kit/theme.css">
+<link rel="stylesheet" href="kit/components.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="k">
+<div id="app">
+  <header id="top">
+    <div class="brand"><span class="mark">✦</span> <span data-t="page.brand">Škola</span></div>
+    <button type="button" id="zavrit" class="k-btn k-btn--quiet k-btn--sm" title="Zavřít panel (Esc)" data-t-title="page.closeTitle"><span data-t="page.close">Zavřít</span> <kbd class="k-kbd">Esc</kbd></button>
+  </header>
+  <main id="main" tabindex="-1">
+    <section id="hlava">
+      <p id="nadpis-maly" class="eyebrow"></p>
+      <h1 id="nadpis"></h1>
+      <p id="podnadpis" class="podnadpis"></p>
+    </section>
+    <div id="obsah"></div>
+  </main>
+  <footer id="pata"></footer>
+  <div id="cekam" class="cekam" hidden><i></i></div>
+</div>
+<script src="kit/kit.js"></script>
+<script>Kit.init();</script>
+<script src="texty.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

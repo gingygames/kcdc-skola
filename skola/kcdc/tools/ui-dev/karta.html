@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<title>Škola – náhled karty hodiny</title>
+<!-- Karta hodiny mimo hru: python -m http.server v kořeni repa, pak /skola/kcdc/tools/ui-dev/karta.html -->
+<style>
+  html, body { margin: 0; height: 100%; background: #46523f url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><rect width='40' height='40' fill='%23574'/><path d='M0 40L40 0' stroke='%23685' stroke-width='2'/></svg>"); }
+  iframe { position: absolute; width: 340px; height: 420px; border: 0; top: 40px; }
+</style>
+</head>
+<body>
+<iframe id="a" src="karta-ram.html" style="left: 40px"></iframe>
+<iframe id="b" src="karta-ram.html" style="left: 420px"></iframe>
+<iframe id="c" src="karta-ram.html" style="left: 800px"></iframe>
+<script>
+  var hodina = { ucitel: "Henry", strana: "M m", pismeno: "m", minut: 7, minMinut: 10, zadani: "M m ma", cte: "Hans" };
+  var ukazky = {
+    a: { hodina: Object.assign({}, hodina, { role: "ucitel", zaci: [
+      { jmeno: "Hans", sedi: true, cte: true, pisanka: null }, { jmeno: "Tereza", sedi: true, cte: false, pisanka: "odevzdano" },
+      { jmeno: "Ondřej z Mrchojed", sedi: false, cte: false, pisanka: null }, { jmeno: "Bětka", sedi: true, cte: false, pisanka: "uznano" }] }),
+      prst: "Hans ukazuje na „mama“ (vidí „mxma“)", stavba: null, klavesy: "[J] Tabule a hodina" },
+    b: { hodina: Object.assign({}, hodina, { role: "zak", ja: { sedi: true, ctu: false, pisanka: null, nazev: "Písmena", xp: 42, od: 34, do: 50, dalsi: "písmeno L" } }),
+      prst: null, stavba: null, klavesy: "[L] Sklonit se nad čítanku · [J] Psát do písanky" },
+    c: { hodina: null, prst: null, stavba: { nazev: "Školní lavice", postaveno: 2, znovu: true }, klavesy: "" },
+  };
+  Object.keys(ukazky).forEach(function (k) {
+    var f = document.getElementById(k);
+    f.addEventListener("load", function () {
+      var lang = new URLSearchParams(location.search).get("lang") || "cs";
+      fetch("../../dist/ui-dev-texty.json").then(function (r) { return r.json(); }).catch(function () { return {}; }).then(function (t) {
+        f.contentWindow.dispatchEvent(new CustomEvent("skola:texty", { detail: { jazyk: lang, texty: t[lang] || {} } }));
+        f.contentWindow.dispatchEvent(new CustomEvent("skola:kartaUkaz", { detail: ukazky[k] }));
+      });
+    });
+  });
+</script>
+</body>
+</html>

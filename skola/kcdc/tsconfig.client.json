@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "ES2022"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": [
+      "@kingdomsconnected/types/client"
+    ],
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": [
+    "src/client.ts",
+    "src/ui-jadro.ts",
+    "src/ui-api.ts",
+    "src/umistovani.ts",
+    "src/vychozi-ui/main.ts",
+    "src/vychozi-ui/panel.ts",
+    "src/vychozi-ui/karta.ts",
+    "src/lang/*-klient.ts",
+    "src/shared/*.ts"
+  ]
+}

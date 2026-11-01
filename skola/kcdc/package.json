@@ -1,0 +1,17 @@
+{
+  "name": "skola-kcdc",
+  "private": true,
+  "type": "module",
+  "description": "Škola pro Kingdoms Connected (KCDC): výuka čtení a psaní u písaře, tabule a listy z kreseb, XP gramotnosti a postupná čitelnost textů",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "test": "node tools/build.mjs && vitest run"
+  },
+  "devDependencies": {
+    "@kingdomsconnected/types": "1.7.2",
+    "esbuild": "^0.28.2",
+    "typescript": "6.0.2",
+    "vitest": "^5.0.5"
+  },
+  "version": "0.1.0"
+}

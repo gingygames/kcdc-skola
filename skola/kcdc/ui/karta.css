@@ -1,0 +1,62 @@
+/* Karta hodiny: malá, čitelná nad scénou (neprůhledné pozadí podle ui-kitu), bez ovládání. */
+
+html, body { margin: 0; background: transparent; overflow: hidden; }
+body.k { background: transparent; }
+
+.karta-hodiny {
+  box-sizing: border-box;
+  padding: var(--k-s3);
+  background: var(--k-bg);
+  border: 1px solid var(--k-line);
+  border-left: 3px solid var(--k-accent);
+  border-radius: var(--k-r-lg);
+  box-shadow: var(--k-shadow-2);
+  font-size: var(--k-fs-sm);
+  animation: k-fade var(--k-t) var(--k-ease);
+}
+.karta-hodiny > * + * { margin-top: var(--k-s2); }
+
+.hlava { display: flex; align-items: center; gap: var(--k-s2); }
+.dlazdice {
+  display: grid; place-items: center; flex: none; min-width: 2.4rem; height: 2.4rem; padding: 0 4px; box-sizing: border-box;
+  border-radius: var(--k-r); background: var(--k-paper); color: var(--k-paper-text);
+  font: 600 1.15rem var(--k-font-serif);
+}
+.hlava-text { display: flex; flex-direction: column; min-width: 0; }
+.hlava-text b { font: 600 var(--k-fs) var(--k-font-serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hlava-text small { color: var(--k-muted); font-size: var(--k-fs-xs); }
+
+.radek { margin: 0; display: flex; align-items: center; justify-content: space-between; gap: var(--k-s2); color: var(--k-text); }
+.prazdne { margin: 0; color: var(--k-muted); font-size: var(--k-fs-xs); }
+
+.zivy {
+  margin: 0; padding: var(--k-s1) var(--k-s2);
+  border-radius: var(--k-r-sm); background: var(--k-raised); color: var(--k-text);
+  border-left: 2px solid var(--k-ok);
+}
+
+.zaci { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; }
+.zaci li { display: flex; align-items: center; gap: var(--k-s1); }
+.jmeno { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tecka { flex: none; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--k-faint); }
+.tecka.je-ok { background: var(--k-ok); }
+.tecka.je-pryc { background: var(--k-warn); }
+.stitek { flex: none; padding: 0 5px; border-radius: 99px; border: 1px solid var(--k-line); color: var(--k-muted); font-size: var(--k-fs-xs); }
+.stitek.je-ok { border-color: var(--k-ok); color: var(--k-ok); }
+.stitek.je-pozor { border-color: var(--k-warn); color: var(--k-warn); }
+
+.ukol { margin: 0; padding: var(--k-s2); border-radius: var(--k-r); background: var(--k-surface-2); color: var(--k-text); line-height: 1.35; }
+.ukol.je-akce { background: var(--k-raised); border-left: 2px solid var(--k-accent); }
+.ukol.je-hotovo { border-left: 2px solid var(--k-ok); }
+
+.postup-mini { display: grid; gap: 3px; color: var(--k-muted); font-size: var(--k-fs-xs); }
+.postup-mini .postup { height: 4px; border-radius: 99px; background: var(--k-line-soft); overflow: hidden; }
+.postup-mini .postup i { display: block; height: 100%; background: var(--k-accent); }
+
+.klavesy { margin: 0; padding-top: var(--k-s2); border-top: 1px solid var(--k-line-soft); color: var(--k-muted); font-size: var(--k-fs-xs); line-height: 1.8; }
+.klavesy .k-kbd { margin-right: 3px; }
+
+.ovladani { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.ovladani .k-kbd { min-width: 3.6rem; display: inline-block; text-align: center; margin-right: var(--k-s1); }
+
+@media (prefers-reduced-motion: reduce) { .karta-hodiny { animation: none; } }

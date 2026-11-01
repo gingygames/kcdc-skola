@@ -1,0 +1,1183 @@
+{
+ "vitej": {
+  "seq": 1,
+  "ucitel": true,
+  "ja": {
+   "stupen": 0,
+   "nazev": "Negramotný",
+   "xp": 0,
+   "od": 0,
+   "do": 10,
+   "dalsi": "písmeno A",
+   "pismena": "",
+   "ukazka": "Xrz ardx euez. Muc knóá e bxrc."
+  },
+  "akce": [
+   {
+    "id": "zalozit",
+    "text": "Založit školu tady",
+    "hlavni": true,
+    "vstup": {
+     "label": "Jak se škola jmenuje",
+     "value": "Škola (Henry)",
+     "max": 40
+    }
+   },
+   {
+    "id": "zavrit",
+    "text": "Zavřít"
+   }
+  ],
+  "obrazovka": "vitej",
+  "titulek": "Škola písaře",
+  "text": "Tady založíš třídu: pak pověsíš tabuli, postavíš lavice a můžeš učit."
+ },
+ "pruvodce-tabule": {
+  "seq": 2,
+  "ucitel": true,
+  "ja": {
+   "stupen": 0,
+   "nazev": "Negramotný",
+   "xp": 0,
+   "od": 0,
+   "do": 10,
+   "dalsi": "písmeno A",
+   "pismena": "",
+   "ukazka": "Xrz ardx euez. Muc knóá e bxrc."
+  },
+  "akce": [
+   {
+    "id": "pruvodce:krok:tabule",
+    "text": "Průvodce: Tabule"
+   },
+   {
+    "id": "pruvodce:krok:lavice",
+    "text": "Průvodce: Lavice"
+   },
+   {
+    "id": "pruvodce:krok:hotovo",
+    "text": "Průvodce: Hotovo"
+   },
+   {
+    "id": "umistit:zed",
+    "text": "Tabule na zeď",
+    "tip": "Zamiř na stěnu, klikni."
+   },
+   {
+    "id": "umistit:stojan",
+    "text": "Tabule na stojanu",
+    "tip": "Stojan postavíš kamkoli na zem."
+   },
+   {
+    "id": "umistit:stul",
+    "text": "Školní lavice",
+    "tip": "Stůl s lavicí pro dva žáky, listy na stole. Staví se jedna za druhou."
+   },
+   {
+    "id": "umistit:misto",
+    "text": "Místo u stolu, který tu stojí",
+    "tip": "Zamiř na desku stolu; žák sedí z tvé strany."
+   },
+   {
+    "id": "umistit:lavice",
+    "text": "Lavice na sezení",
+    "tip": "Jen lavice, bez stolu a listů."
+   },
+   {
+    "id": "pruvodce:hotovo",
+    "text": "Hotovo, můžu učit",
+    "hlavni": false,
+    "vypnuto": "Postav aspoň jednu lavici (nebo místo u stolu)."
+   },
+   {
+    "id": "zavrit",
+    "text": "Zavřít"
+   }
+  ],
+  "obrazovka": "pruvodce",
+  "titulek": "Škola u brány",
+  "trida": {
+   "nazev": "Škola u brány",
+   "verejna": true,
+   "mist": 0,
+   "vybaveni": [],
+   "tabule": false
+  },
+  "kroky": [
+   {
+    "id": "tabule",
+    "nazev": "Tabule",
+    "hotovo": false
+   },
+   {
+    "id": "lavice",
+    "nazev": "Lavice",
+    "hotovo": false
+   },
+   {
+    "id": "hotovo",
+    "nazev": "Hotovo",
+    "hotovo": false
+   }
+  ],
+  "krok": "tabule",
+  "hlaska": {
+   "text": "Třída je založená. Teď tabule a lavice – průvodce ukáže kam.",
+   "druh": "ok"
+  }
+ },
+ "pruvodce-lavice": {
+  "seq": 4,
+  "ucitel": true,
+  "ja": {
+   "stupen": 0,
+   "nazev": "Negramotný",
+   "xp": 0,
+   "od": 0,
+   "do": 10,
+   "dalsi": "písmeno A",
+   "pismena": "",
+   "ukazka": "Xrz ardx euez. Muc knóá e bxrc."
+  },
+  "akce": [
+   {
+    "id": "pruvodce:krok:tabule",
+    "text": "Průvodce: Tabule"
+   },
+   {
+    "id": "pruvodce:krok:lavice",
+    "text": "Průvodce: Lavice"
+   },
+   {
+    "id": "pruvodce:krok:hotovo",
+    "text": "Průvodce: Hotovo"
+   },
+   {
+    "id": "umistit:zed",
+    "text": "Tabule na zeď",
+    "tip": "Zamiř na stěnu, klikni."
+   },
+   {
+    "id": "umistit:stojan",
+    "text": "Tabule na stojanu",
+    "tip": "Stojan postavíš kamkoli na zem."
+   },
+   {
+    "id": "umistit:stul",
+    "text": "Školní lavice",
+    "tip": "Stůl s lavicí pro dva žáky, listy na stole. Staví se jedna za druhou."
+   },
+   {
+    "id": "umistit:misto",
+    "text": "Místo u stolu, který tu stojí",
+    "tip": "Zamiř na desku stolu; žák sedí z tvé strany."
+   },
+   {
+    "id": "umistit:lavice",
+    "text": "Lavice na sezení",
+    "tip": "Jen lavice, bez stolu a listů."
+   },
+   {
+    "id": "presunout:tabule",
+    "text": "Přesunout: Tabule na zdi"
+   },
+   {
+    "id": "odebrat:tabule",
+    "text": "Odebrat: Tabule na zdi",
+    "nebezpecne": "Tabule zmizí i s tím, co je na ní."
+   },
+   {
+    "id": "presunout:stul:8kn4",
+    "text": "Přesunout: Lavice 1"
+   },
+   {
+    "id": "odebrat:stul:8kn4",
+    "text": "Odebrat: Lavice 1",
+    "nebezpecne": "Lavice 1 zmizí ze třídy."
+   },
+   {
+    "id": "pruvodce:hotovo",
+    "text": "Hotovo, můžu učit",
+    "hlavni": false
+   },
+   {
+    "id": "zavrit",
+    "text": "Zavřít"
+   }
+  ],
+  "obrazovka": "pruvodce",
+  "titulek": "Škola u brány",
+  "trida": {
+   "nazev": "Škola u brány",
+   "verejna": true,
+   "mist": 2,
+   "vybaveni": [
+    {
+     "id": "tabule",
+     "druh": "tabule",
+     "nazev": "Tabule na zdi",
+     "popis": "1.6 × 1 m"
+    },
+    {
+     "id": "stul:8kn4",
+     "druh": "stul",
+     "nazev": "Lavice 1",
+     "popis": "stůl a lavice, 2 místa"
+    }
+   ],
+   "tabule": true
+  },
+  "kroky": [
+   {
+    "id": "tabule",
+    "nazev": "Tabule",
+    "hotovo": true
+   },
+   {
+    "id": "lavice",
+    "nazev": "Lavice",
+    "hotovo": true
+   },
+   {
+    "id": "hotovo",
+    "nazev": "Hotovo",
+    "hotovo": true
+   }
+  ],
+  "krok": "lavice"
+ },
+ "trida": {
+  "seq": 6,
+  "ucitel": true,
+  "ja": {
+   "stupen": 0,
+   "nazev": "Negramotný",
+   "xp": 0,
+   "od": 0,
+   "do": 10,
+   "dalsi": "písmeno A",
+   "pismena": "",
+   "ukazka": "Xrz ardx euez. Muc knóá e bxrc."
+  },
+  "akce": [
+   {
+    "id": "hodina:zacit",
+    "text": "Začít hodinu (A a)",
+    "hlavni": true
+   },
+   {
+    "id": "strana:0",
+    "text": "Stránka A a"
+   },
+   {
+    "id": "strana:1",
+    "text": "Stránka E e"
+   },
+   {
+    "id": "strana:2",
+    "text": "Stránka I i"
+   },
+   {
+    "id": "strana:3",
+    "text": "Stránka O o"
+   },
+   {
+    "id": "strana:4",
+    "text": "Stránka U u"
+   },
+   {
+    "id": "strana:5",
+    "text": "Stránka M m"
+   },
+   {
+    "id": "strana:6",
+    "text": "Stránka L l"
+   },
+   {
+    "id": "strana:7",
+    "text": "Stránka S s"
+   },
+   {
+    "id": "strana:8",
+    "text": "Stránka P p"
+   },
+   {
+    "id": "strana:9",
+    "text": "Stránka T t"
+   },
+   {
+    "id": "strana:10",
+    "text": "Stránka V v"
+   },
+   {
+    "id": "strana:11",
+    "text": "Stránka N n"
+   },
+   {
+    "id": "strana:12",
+    "text": "Stránka D d"
+   },
+   {
+    "id": "strana:13",
+    "text": "Stránka K k"
+   },
+   {
+    "id": "strana:14",
+    "text": "Stránka R r"
+   },
+   {
+    "id": "strana:15",
+    "text": "Stránka Čteme: U mlýna"
+   },
+   {
+    "id": "strana:16",
+    "text": "Stránka Čteme: Na trhu"
+   },
+   {
+    "id": "strana:17",
+    "text": "Stránka Latina: Otče náš"
+   },
+   {
+    "id": "umistit:zed",
+    "text": "Tabule na zeď",
+    "tip": "Zamiř na stěnu, klikni."
+   },
+   {
+    "id": "umistit:stojan",
+    "text": "Tabule na stojanu",
+    "tip": "Stojan postavíš kamkoli na zem."
+   },
+   {
+    "id": "umistit:stul",
+    "text": "Školní lavice",
+    "tip": "Stůl s lavicí pro dva žáky, listy na stole. Staví se jedna za druhou."
+   },
+   {
+    "id": "umistit:misto",
+    "text": "Místo u stolu, který tu stojí",
+    "tip": "Zamiř na desku stolu; žák sedí z tvé strany."
+   },
+   {
+    "id": "umistit:lavice",
+    "text": "Lavice na sezení",
+    "tip": "Jen lavice, bez stolu a listů."
+   },
+   {
+    "id": "presunout:tabule",
+    "text": "Přesunout: Tabule na zdi"
+   },
+   {
+    "id": "odebrat:tabule",
+    "text": "Odebrat: Tabule na zdi",
+    "nebezpecne": "Tabule zmizí i s tím, co je na ní."
+   },
+   {
+    "id": "presunout:stul:8kn4",
+    "text": "Přesunout: Lavice 1"
+   },
+   {
+    "id": "odebrat:stul:8kn4",
+    "text": "Odebrat: Lavice 1",
+    "nebezpecne": "Lavice 1 zmizí ze třídy."
+   },
+   {
+    "id": "tabule:strana",
+    "text": "Stránka A a na tabuli",
+    "tip": "Písmeno lekce, obrázek a text stránky křídou."
+   },
+   {
+    "id": "tabule:ja",
+    "text": "Psát na tabuli sám",
+    "tip": "Křída: dojdi k tabuli, otevře se plátno."
+   },
+   {
+    "id": "tabule:text",
+    "text": "Napsat text na tabuli",
+    "tip": "Smaže tabuli a napíše text úhledným písmem.",
+    "vstup": {
+     "label": "Co napsat na tabuli",
+     "placeholder": "Ema mele maso.",
+     "max": 300,
+     "radky": true,
+     "volby": [
+      "A a A a",
+      "a a a",
+      "A A A"
+     ]
+    }
+   },
+   {
+    "id": "tabule:ulozit",
+    "text": "Uložit tabuli",
+    "tip": "Na později, ukáže se hned.",
+    "vstup": {
+     "label": "Název uložené tabule",
+     "value": "A a",
+     "max": 40
+    }
+   },
+   {
+    "id": "tabule:obrazek",
+    "text": "Nakreslit obrázek ke stránce A a",
+    "tip": "U tabule na pergamen; čítanky ho ukážou nad textem."
+   },
+   {
+    "id": "tabule:pripravit",
+    "text": "Připravit tabule slabikáře",
+    "tip": "Upeče všechny stránky předem, při hodině se ukážou hned."
+   },
+   {
+    "id": "tabule:smazat",
+    "text": "Smazat tabuli",
+    "nebezpecne": "Z tabule zmizí všechno, co je na ní napsané."
+   },
+   {
+    "id": "trida:nazev",
+    "text": "Přejmenovat třídu",
+    "vstup": {
+     "label": "Název třídy",
+     "value": "Škola u brány",
+     "max": 40
+    }
+   },
+   {
+    "id": "trida:verejna",
+    "text": "Hodiny: veřejné – přepnout na jen pozvané"
+   },
+   {
+    "id": "pruvodce:znovu",
+    "text": "Průvodce zařízením"
+   },
+   {
+    "id": "trida:zrusit",
+    "text": "Zrušit třídu",
+    "nebezpecne": "Škola u brány zmizí i s tabulí, lavicemi a listy. Gramotnost žáků zůstane."
+   },
+   {
+    "id": "zavrit",
+    "text": "Zavřít"
+   }
+  ],
+  "obrazovka": "trida",
+  "titulek": "Škola u brány",
+  "text": "Míst u stolů 2 · veřejné hodiny",
+  "trida": {
+   "nazev": "Škola u brány",
+   "verejna": true,
+   "mist": 2,
+   "vybaveni": [
+    {
+     "id": "tabule",
+     "druh": "tabule",
+     "nazev": "Tabule na zdi",
+     "popis": "1.6 × 1 m"
+    },
+    {
+     "id": "stul:8kn4",
+     "druh": "stul",
+     "nazev": "Lavice 1",
+     "popis": "stůl a lavice, 2 místa"
+    }
+   ],
+   "tabule": true
+  },
+  "slabikar": [
+   {
+    "i": 0,
+    "nazev": "A a",
+    "pismeno": "a",
+    "ukazka": "A A A",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 1,
+    "nazev": "E e",
+    "pismeno": "e",
+    "ukazka": "A E",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 2,
+    "nazev": "I i",
+    "pismeno": "i",
+    "ukazka": "AI EI",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 3,
+    "nazev": "O o",
+    "pismeno": "o",
+    "ukazka": "OI AO",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 4,
+    "nazev": "U u",
+    "pismeno": "u",
+    "ukazka": "AU OU",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 5,
+    "nazev": "M m",
+    "pismeno": "m",
+    "ukazka": "mama, Ema, umí",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 6,
+    "nazev": "L l",
+    "pismeno": "l",
+    "ukazka": "lama, mele, Ola, mlelo",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 7,
+    "nazev": "S s",
+    "pismeno": "s",
+    "ukazka": "solo, osel, mise, sele",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 8,
+    "nazev": "P p",
+    "pismeno": "p",
+    "ukazka": "pes, pila, lupa, sopel",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 9,
+    "nazev": "T t",
+    "pismeno": "t",
+    "ukazka": "tata, tele, oplet, lopata",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 10,
+    "nazev": "V v",
+    "pismeno": "v",
+    "ukazka": "vosa, vlas, sova, Vitus",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 11,
+    "nazev": "N n",
+    "pismeno": "n",
+    "ukazka": "nos, noviny, Nela, sen",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 12,
+    "nazev": "D d",
+    "pismeno": "d",
+    "ukazka": "domov, voda, Dana, pod",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 13,
+    "nazev": "K k",
+    "pismeno": "k",
+    "ukazka": "koza, kolo, okno, kapuce",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 14,
+    "nazev": "R r",
+    "pismeno": "r",
+    "ukazka": "ruka, rosa, kostel, vrba",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 15,
+    "nazev": "Čteme: U mlýna",
+    "pismeno": "",
+    "ukazka": "Táta nese vodu od mlýna.",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 16,
+    "nazev": "Čteme: Na trhu",
+    "pismeno": "",
+    "ukazka": "Kdo umí číst, ten nekoupí zajíce v pytli",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 17,
+    "nazev": "Latina: Otče náš",
+    "pismeno": "",
+    "ukazka": "posvěť se jméno tvé.",
+    "obrazek": false,
+    "pripravena": false
+   }
+  ],
+  "strana": 0,
+  "hlaska": {
+   "text": "Třída je zařízená. Začni hodinu, až budou žáci sedět.",
+   "druh": "ok"
+  }
+ },
+ "zak": {
+  "seq": 1,
+  "ucitel": false,
+  "ja": {
+   "stupen": 0,
+   "nazev": "Negramotný",
+   "xp": 0,
+   "od": 0,
+   "do": 10,
+   "dalsi": "písmeno A",
+   "pismena": "",
+   "ukazka": "Xrz ardx euez. Muc knóá e bxrc."
+  },
+  "akce": [
+   {
+    "id": "zak:cist",
+    "text": "Sklonit se nad čítanku",
+    "hlavni": true
+   },
+   {
+    "id": "zak:psat",
+    "text": "Psát do písanky",
+    "vypnuto": "Písař ještě nic nezadal."
+   },
+   {
+    "id": "zavrit",
+    "text": "Zavřít"
+   }
+  ],
+  "obrazovka": "zak",
+  "titulek": "Škola",
+  "text": "Na hodinu přijdeš do třídy písaře, když učí."
+ },
+ "hodina": {
+  "seq": 10,
+  "ucitel": true,
+  "ja": {
+   "stupen": 0,
+   "nazev": "Negramotný",
+   "xp": 0,
+   "od": 0,
+   "do": 10,
+   "dalsi": "písmeno A",
+   "pismena": "",
+   "ukazka": "Xrz ardx euez. Muc knóá e bxrc."
+  },
+  "akce": [
+   {
+    "id": "cist:2",
+    "text": "Hans: číst nahlas",
+    "vypnuto": "Už čte."
+   },
+   {
+    "id": "tabule:zak:2",
+    "text": "Hans: k tabuli"
+   },
+   {
+    "id": "pisanka:ukaz:2",
+    "text": "Hans: prohlédnout písanku"
+   },
+   {
+    "id": "pisanka:ok:2",
+    "text": "Hans: uznat písanku"
+   },
+   {
+    "id": "pisanka:znovu:2",
+    "text": "Hans: psát znovu"
+   },
+   {
+    "id": "cist:4",
+    "text": "Tereza: číst nahlas"
+   },
+   {
+    "id": "tabule:zak:4",
+    "text": "Tereza: k tabuli"
+   },
+   {
+    "id": "cist:stop",
+    "text": "Přestat číst"
+   },
+   {
+    "id": "pisanky:zadat",
+    "text": "Nová předloha do písanek",
+    "vstup": {
+     "label": "Předloha (písmeno nebo krátké slovo)",
+     "value": "A a",
+     "max": 40,
+     "volby": [
+      "A a"
+     ]
+    }
+   },
+   {
+    "id": "hodina:konec",
+    "text": "Ukončit hodinu…",
+    "hlavni": true
+   },
+   {
+    "id": "strana:0",
+    "text": "Stránka A a"
+   },
+   {
+    "id": "strana:1",
+    "text": "Stránka E e"
+   },
+   {
+    "id": "strana:2",
+    "text": "Stránka I i"
+   },
+   {
+    "id": "strana:3",
+    "text": "Stránka O o"
+   },
+   {
+    "id": "strana:4",
+    "text": "Stránka U u"
+   },
+   {
+    "id": "strana:5",
+    "text": "Stránka M m"
+   },
+   {
+    "id": "strana:6",
+    "text": "Stránka L l"
+   },
+   {
+    "id": "strana:7",
+    "text": "Stránka S s"
+   },
+   {
+    "id": "strana:8",
+    "text": "Stránka P p"
+   },
+   {
+    "id": "strana:9",
+    "text": "Stránka T t"
+   },
+   {
+    "id": "strana:10",
+    "text": "Stránka V v"
+   },
+   {
+    "id": "strana:11",
+    "text": "Stránka N n"
+   },
+   {
+    "id": "strana:12",
+    "text": "Stránka D d"
+   },
+   {
+    "id": "strana:13",
+    "text": "Stránka K k"
+   },
+   {
+    "id": "strana:14",
+    "text": "Stránka R r"
+   },
+   {
+    "id": "strana:15",
+    "text": "Stránka Čteme: U mlýna"
+   },
+   {
+    "id": "strana:16",
+    "text": "Stránka Čteme: Na trhu"
+   },
+   {
+    "id": "strana:17",
+    "text": "Stránka Latina: Otče náš"
+   },
+   {
+    "id": "tabule:strana",
+    "text": "Stránka A a na tabuli",
+    "tip": "Písmeno lekce, obrázek a text stránky křídou."
+   },
+   {
+    "id": "tabule:ja",
+    "text": "Psát na tabuli sám",
+    "tip": "Křída: dojdi k tabuli, otevře se plátno."
+   },
+   {
+    "id": "tabule:text",
+    "text": "Napsat text na tabuli",
+    "tip": "Smaže tabuli a napíše text úhledným písmem.",
+    "vstup": {
+     "label": "Co napsat na tabuli",
+     "placeholder": "Ema mele maso.",
+     "max": 300,
+     "radky": true,
+     "volby": [
+      "A a A a",
+      "a a a",
+      "A A A"
+     ]
+    }
+   },
+   {
+    "id": "tabule:ulozit",
+    "text": "Uložit tabuli",
+    "tip": "Na později, ukáže se hned.",
+    "vstup": {
+     "label": "Název uložené tabule",
+     "value": "A a",
+     "max": 40
+    }
+   },
+   {
+    "id": "tabule:obrazek",
+    "text": "Nakreslit obrázek ke stránce A a",
+    "tip": "U tabule na pergamen; čítanky ho ukážou nad textem."
+   },
+   {
+    "id": "tabule:pripravit",
+    "text": "Připravit tabule slabikáře",
+    "tip": "Upeče všechny stránky předem, při hodině se ukážou hned."
+   },
+   {
+    "id": "tabule:smazat",
+    "text": "Smazat tabuli",
+    "nebezpecne": "Z tabule zmizí všechno, co je na ní napsané."
+   },
+   {
+    "id": "zavrit",
+    "text": "Zavřít"
+   }
+  ],
+  "obrazovka": "hodina",
+  "titulek": "Hodina: A a",
+  "text": "Škola u brány",
+  "trida": {
+   "nazev": "Škola u brány",
+   "verejna": true,
+   "mist": 2,
+   "vybaveni": [
+    {
+     "id": "tabule",
+     "druh": "tabule",
+     "nazev": "Tabule na zdi",
+     "popis": "1.6 × 1 m"
+    },
+    {
+     "id": "stul:8kn4",
+     "druh": "stul",
+     "nazev": "Lavice 1",
+     "popis": "stůl a lavice, 2 místa"
+    }
+   ],
+   "tabule": true
+  },
+  "hodina": {
+   "ucitel": "Henry",
+   "minut": 0,
+   "minMinut": 10,
+   "minPritomnost": 60,
+   "strana": 0,
+   "cte": "Hans",
+   "zadani": "A a",
+   "predloha": "A a",
+   "zaci": [
+    {
+     "pid": 2,
+     "jmeno": "Hans",
+     "stupen": "Negramotný",
+     "xp": 0,
+     "pritomnost": 100,
+     "sedi": true,
+     "cte": true,
+     "cetl": true,
+     "psal": false,
+     "pisanka": {
+      "skore": 1,
+      "stav": "odevzdano"
+     },
+     "navrh": "uc"
+    },
+    {
+     "pid": 4,
+     "jmeno": "Tereza",
+     "stupen": "Negramotný",
+     "xp": 0,
+     "pritomnost": 100,
+     "sedi": false,
+     "cte": false,
+     "cetl": false,
+     "psal": false,
+     "pisanka": null,
+     "navrh": "u"
+    }
+   ],
+   "kolem": [],
+   "neupeceno": false,
+   "ulozene": [],
+   "xp": {
+    "ucast": 5,
+    "cteni": 10,
+    "psani": 10
+   }
+  },
+  "slabikar": [
+   {
+    "i": 0,
+    "nazev": "A a",
+    "pismeno": "a",
+    "ukazka": "A A A",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 1,
+    "nazev": "E e",
+    "pismeno": "e",
+    "ukazka": "A E",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 2,
+    "nazev": "I i",
+    "pismeno": "i",
+    "ukazka": "AI EI",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 3,
+    "nazev": "O o",
+    "pismeno": "o",
+    "ukazka": "OI AO",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 4,
+    "nazev": "U u",
+    "pismeno": "u",
+    "ukazka": "AU OU",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 5,
+    "nazev": "M m",
+    "pismeno": "m",
+    "ukazka": "mama, Ema, umí",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 6,
+    "nazev": "L l",
+    "pismeno": "l",
+    "ukazka": "lama, mele, Ola, mlelo",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 7,
+    "nazev": "S s",
+    "pismeno": "s",
+    "ukazka": "solo, osel, mise, sele",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 8,
+    "nazev": "P p",
+    "pismeno": "p",
+    "ukazka": "pes, pila, lupa, sopel",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 9,
+    "nazev": "T t",
+    "pismeno": "t",
+    "ukazka": "tata, tele, oplet, lopata",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 10,
+    "nazev": "V v",
+    "pismeno": "v",
+    "ukazka": "vosa, vlas, sova, Vitus",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 11,
+    "nazev": "N n",
+    "pismeno": "n",
+    "ukazka": "nos, noviny, Nela, sen",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 12,
+    "nazev": "D d",
+    "pismeno": "d",
+    "ukazka": "domov, voda, Dana, pod",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 13,
+    "nazev": "K k",
+    "pismeno": "k",
+    "ukazka": "koza, kolo, okno, kapuce",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 14,
+    "nazev": "R r",
+    "pismeno": "r",
+    "ukazka": "ruka, rosa, kostel, vrba",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 15,
+    "nazev": "Čteme: U mlýna",
+    "pismeno": "",
+    "ukazka": "Táta nese vodu od mlýna.",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 16,
+    "nazev": "Čteme: Na trhu",
+    "pismeno": "",
+    "ukazka": "Kdo umí číst, ten nekoupí zajíce v pytli",
+    "obrazek": false,
+    "pripravena": false
+   },
+   {
+    "i": 17,
+    "nazev": "Latina: Otče náš",
+    "pismeno": "",
+    "ukazka": "posvěť se jméno tvé.",
+    "obrazek": false,
+    "pripravena": false
+   }
+  ],
+  "strana": 0
+ },
+ "konec": {
+  "seq": 26,
+  "ucitel": true,
+  "ja": {
+   "stupen": 0,
+   "nazev": "Negramotný",
+   "xp": 0,
+   "od": 0,
+   "do": 10,
+   "dalsi": "písmeno A",
+   "pismena": "",
+   "ukazka": "Xrz ardx euez. Muc knóá e bxrc."
+  },
+  "akce": [
+   {
+    "id": "hodina:rozdat",
+    "text": "Ukončit a rozdat XP",
+    "hlavni": true
+   },
+   {
+    "id": "hodina:bezxp",
+    "text": "Ukončit bez XP",
+    "nebezpecne": "Hodina skončí a nikdo nedostane XP."
+   },
+   {
+    "id": "konec:zpet",
+    "text": "Zpět do hodiny"
+   }
+  ],
+  "obrazovka": "konec",
+  "titulek": "Konec hodiny",
+  "text": "Zaškrtni, co kdo dostane. Návrh podle toho, kdo četl a čí písanku jsi uznal.",
+  "trida": {
+   "nazev": "Škola u brány",
+   "verejna": true,
+   "mist": 2,
+   "vybaveni": [
+    {
+     "id": "tabule",
+     "druh": "tabule",
+     "nazev": "Tabule na zdi",
+     "popis": "1.6 × 1 m"
+    },
+    {
+     "id": "stul:8kn4",
+     "druh": "stul",
+     "nazev": "Lavice 1",
+     "popis": "stůl a lavice, 2 místa"
+    }
+   ],
+   "tabule": true
+  },
+  "hodina": {
+   "ucitel": "Henry",
+   "minut": 12,
+   "minMinut": 10,
+   "minPritomnost": 60,
+   "strana": 0,
+   "cte": "Hans",
+   "zadani": "A a",
+   "predloha": "A a",
+   "zaci": [
+    {
+     "pid": 2,
+     "jmeno": "Hans",
+     "stupen": "Negramotný",
+     "xp": 0,
+     "pritomnost": 100,
+     "sedi": true,
+     "cte": true,
+     "cetl": true,
+     "psal": true,
+     "pisanka": {
+      "skore": 1,
+      "stav": "uznano"
+     },
+     "navrh": "ucp"
+    },
+    {
+     "pid": 4,
+     "jmeno": "Tereza",
+     "stupen": "Negramotný",
+     "xp": 0,
+     "pritomnost": 100,
+     "sedi": false,
+     "cte": false,
+     "cetl": false,
+     "psal": false,
+     "pisanka": null,
+     "navrh": "u"
+    }
+   ],
+   "kolem": [],
+   "neupeceno": true,
+   "ulozene": [],
+   "xp": {
+    "ucast": 5,
+    "cteni": 10,
+    "psani": 10
+   }
+  }
+ }
+}
