@@ -354,6 +354,7 @@ function zvednout(serveru: boolean) {
     // nic
   }
   setTimeout(() => {
+    if (cteni) return; // mezitím začalo nové čtení (prst zapnut, jiná stránka): ovládání má zůstat vypnuté
     try {
       Controls.enable();
     } catch {
@@ -420,8 +421,9 @@ Events.on(EV.prstUcitel, (raw: unknown) => {
 });
 
 // ---------------------------------------------------------------------------
-// nápověda u stolu a u tabule: který příkaz tady jde (karta hodiny, jinak infotext hry). Žádné klávesy ani nativní
-// nápověda akce: na klávese „použít“ by se bila s herním „vstát“ z lavice, vlastní klávesy s jinými moduly.
+// nápověda u stolu a u tabule: nativní nápověda akce hry na ovládání, které tam KCDC skriptům nabízí (ne „použít“:
+// bila by se s herním „vstát“ z lavice; žádné vlastní klávesy, ty se bily s jinými moduly). Bez nápovědy hry příkaz
+// v kartě hodiny / infotextu. Ve hře ověřit: neruší primary_action u sedícího žáka vstávání z lavice?
 
 let okoli: OkoliMsg = { dosah: 1.6, tridy: [] };
 

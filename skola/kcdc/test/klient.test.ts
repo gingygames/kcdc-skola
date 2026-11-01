@@ -285,6 +285,22 @@ describe("klient školy", () => {
     expect(vychozi.shown).toBe(true);
   });
 
+  it("framework vymění jen panel: výchozí karta dál dostává texty v novém jazyce; setUi(null) a konec frameworku vrátí výchozí UI", async () => {
+    const c = klient();
+    const [panel, karta] = c.views;
+    karta.handlers.get("skola:kartaHello")!();
+    const setUi = c.exportsReg.get("setUi") as (ui: object, owner: string) => boolean;
+    setUi({ panel: { ukazat: () => true, schovat: () => undefined } }, "fw");
+    c.deliver("skola:jazyk", JSON.stringify({ jazyk: "en", vychozi: "cs", texty: {} }));
+    expect(karta.emitted.filter(([n]) => n === "skola:texty").at(-1)).toMatchObject(["skola:texty", { jazyk: "en", texty: { "card.nobody": "Nobody in the lesson yet." } }]);
+    // framework UI vypne úplně (null), pak skončí: výchozí panel se vrátí
+    setUi({ panel: null, karta: null }, "fw");
+    c.deliver("resourceStop", "fw");
+    panel.handlers.get("skola:uiHello")!();
+    c.deliver("skola:ui", JSON.stringify({ seq: 1, obrazovka: "trida", ucitel: true, titulek: "Škola", ja: {}, akce: [] }));
+    expect(panel.shown).toBe(true);
+  });
+
   it("jazyk hráče: nápověda u stolu a texty stránky anglicky", async () => {
     const c = klient();
     c.deliver("skola:jazyk", JSON.stringify({ jazyk: "en", vychozi: "cs", texty: {} }));

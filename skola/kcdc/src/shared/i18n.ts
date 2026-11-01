@@ -69,7 +69,16 @@ export function odebratVlastnika(owner: string, vestavene: () => void) {
 }
 
 export const jazyky = (): string[] => [...slovniky.keys()].filter((j) => Object.keys(slovniky.get(j)!).length > 0);
-export const maJazyk = (j: string) => slovniky.has(kodJazyka(j));
+export const maJazyk = (j: string) => rozpoznat(j) !== null;
+
+/** kód jazyka, který škola má: přesně ("en-gb"), jinak základ ("en-US" -> "en"); null = nezná */
+export function rozpoznat(j: unknown): string | null {
+  const k = kodJazyka(j);
+  if (!k) return null;
+  if (slovniky.has(k)) return k;
+  const zaklad = k.split("-")[0];
+  return slovniky.has(zaklad) ? zaklad : null;
+}
 
 function tvar(jazyk: string, n: number): number {
   const f = tvary.get(jazyk) ?? tvary.get(jazyk.split("-")[0]);

@@ -575,3 +575,32 @@ describe("škola: jazyky a oprávnění na serveru", () => {
     expect(await s.exp("can")(s.tereza.id, "school.use")).toBe(true);
   });
 });
+
+describe("škola: opravy z recenze (jazyk po startu, regionální kódy, schopnosti v F10)", () => {
+  beforeEach(() => void vi.useFakeTimers({ now: Date.UTC(2026, 9, 29, 9) }));
+  afterEach(() => void vi.useRealTimers());
+
+  it("start školy pošle připojeným hráčům jazyk; háček frameworku s en-US dá angličtinu", async () => {
+    const s = server();
+    await flush();
+    expect(s.last(s.hans, "skola:jazyk")).toMatchObject({ jazyk: "cs" }); // bez playerReady (restart resource)
+    expect(s.exp("setHooks")({ jazyk: () => "en-US" }, "muj-fw")).toBe(1);
+    await flush();
+    expect(s.last(s.hans, "skola:jazyk")).toMatchObject({ jazyk: "en" });
+    await s.cmd(s.hans, "jazyk en_GB");
+    expect(notes(s, s.hans).at(-1)).toBe("School language: en.");
+  });
+
+  it("F10 akce respektují schopnosti (háček opravneni): Přidat XP bez xp.edit nejde", async () => {
+    const s = server();
+    s.exp("setHooks")({ opravneni: (_pid: number, sch: string) => (sch === "xp.edit" ? false : undefined) }, "muj-fw");
+    const panel = s.exp("spravaPanels")()[0];
+    const dat = panel.actions.find((a: any) => a.id === "dat");
+    const r = await dat.handler({ caller: s.henry, params: { hrac: s.hans, xp: 10 } });
+    expect(r).toMatchObject({ ok: false, message: "Na to nemáš oprávnění." });
+    expect(s.exp("xp")(s.hans.id)).toBe(0);
+    const profil = panel.actions.find((a: any) => a.id === "profil");
+    expect(await profil.handler({ caller: s.hans, params: { hrac: s.henry } })).toMatchObject({ ok: false }); // cizí gramotnost jen s xp.view
+    expect(await profil.handler({ caller: s.hans, params: { hrac: s.hans } })).toMatchObject({ ok: true }); // svou ano
+  });
+});

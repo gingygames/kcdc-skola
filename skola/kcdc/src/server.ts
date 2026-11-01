@@ -32,7 +32,7 @@ import { KARTA, LAVICE_MODEL, LIST_MODEL, STOJAN, STUL, UI, doSveta, qZ, type Dr
 import { doplnit, kopie, overit, schema, VYCHOZI, type Nastaveni } from "./nastaveni";
 import { kridouText, obecnaCitanka, predloha, tabuleStrany } from "./sazba";
 import { SLABIKARE, type Strana } from "./data";
-import { T, ZDROJ, jazyky, kodJazyka, maJazyk, oblast, odebratVlastnika, prekladac, pridatPreklady, tz, type Parametry, type Prekladac, type Slovnik, type Zprava } from "./shared/i18n";
+import { T, ZDROJ, jazyky, kodJazyka, maJazyk, oblast, rozpoznat, odebratVlastnika, prekladac, pridatPreklady, tz, type Parametry, type Prekladac, type Slovnik, type Zprava } from "./shared/i18n";
 import { nahratVestavene } from "./lang";
 import { SEZNAM_SCHOPNOSTI, vytvoritOpravneni, type HacekOpravneni, type Role, type Schopnost } from "./opravneni";
 import type { JazykMsg, KonfigMsg } from "./shared/protocol";
@@ -135,7 +135,7 @@ function nahratJazyky() {
 }
 nahratJazyky();
 
-const vychoziJazyk = () => (maJazyk(N.jazyk.vychozi) ? kodJazyka(N.jazyk.vychozi) : ZDROJ);
+const vychoziJazyk = () => rozpoznat(N.jazyk.vychozi) ?? ZDROJ;
 const jazyk = (p: Player | number) => jazykHracu.get(typeof p === "number" ? p : p.id) ?? vychoziJazyk();
 const tr = (p: Player | number): Prekladac => prekladac(jazyk(p), vychoziJazyk());
 
@@ -144,7 +144,7 @@ async function nactiJazyk(p: Player, poslat = true): Promise<string> {
   if (N.jazyk.volba) {
     try {
       const v = await most.storage.get(KLIC_JAZYK(await cid(p)));
-      if (typeof v === "string" && maJazyk(v)) j = kodJazyka(v);
+      if (typeof v === "string") j = rozpoznat(v);
     } catch {
       // bez úložiště
     }
@@ -152,11 +152,12 @@ async function nactiJazyk(p: Player, poslat = true): Promise<string> {
   if (!j && cizi.h.jazyk) {
     try {
       const v = await cizi.h.jazyk(p.id);
-      if (v && maJazyk(v)) j = kodJazyka(v);
+      if (v) j = rozpoznat(v); // "en-US" -> en
     } catch (e) {
       log(`háček jazyk: ${String(e)}`);
     }
   }
+  if (!Player.getById(p.id)) return jazyk(p); // odpojil se během načítání
   const pred = jazykHracu.get(p.id);
   if (j) jazykHracu.set(p.id, j);
   else jazykHracu.delete(p.id);
@@ -172,9 +173,9 @@ function poslatJazyk(p: Player) {
 }
 
 async function nastavitJazyk(p: Player, kod: string): Promise<Zprava> {
-  const j = kodJazyka(kod);
+  const j = kodJazyka(kod) === "auto" ? "auto" : rozpoznat(kod);
   if (!N.jazyk.volba) return T("msg.lang.locked");
-  if (j !== "auto" && !maJazyk(j)) return T("msg.lang.unknown", { lang: kod, list: jazyky().join(", ") });
+  if (!j) return T("msg.lang.unknown", { lang: kod, list: jazyky().join(", ") });
   try {
     if (j === "auto") await most.storage.delete(KLIC_JAZYK(await cid(p)));
     else await most.storage.set(KLIC_JAZYK(await cid(p)), j);
@@ -937,6 +938,7 @@ async function sklonit(p: Player, kontrola?: { m: Misto; d: string; jmeno: strin
     ctenari.set(p.id, { t: kontrola.t, m: kontrola.m, kontrola: true });
     return send(p, EV.cist, msg);
   }
+  if (!(await muze(p, "school.use"))) return info(p, T("msg.noPermission"));
   const u = mistoU(p);
   if (!u) return info(p, T("msg.read.sitAtReader"));
   await nactiProfil(p);
@@ -1031,7 +1033,7 @@ async function kridou(kdo: Player, t: Trida): Promise<Vysledek> {
   const tt = tr(kdo);
   const r = await draw(kdo.id, t.tabule, 0, {
     // nepéct po každém dopsání (nová textura + přenačtení balíčku): ostatní tabuli vidí čarami, upeče se jednou
-    owner: OWNER, paper: papirTabule(), inks: inkoustyPro(CHALK, tt), tools: [0, 1], base, title: tt("letters.title.board"), hang: true, bake: false,
+    owner: OWNER, paper: papirTabule(), inks: inkoustyPro(CHALK, tt), tools: [0, 1], base, title: trServer()("letters.title.board"), hang: true, bake: false,
     done: (x: { ok: boolean; added?: number }) => {
       if (x.ok && x.added) neupecena(t);
     },
@@ -1197,6 +1199,7 @@ async function zadatPisanky(h: Hodina, text: string): Promise<Vysledek> {
 }
 
 async function psatPisanku(p: Player): Promise<Vysledek> {
+  if (!(await muze(p, "school.write"))) return chyba("msg.noPermission");
   const u = mistoU(p);
   if (!u || u.m.pis === null) return chyba("msg.copybook.sitDown");
   const h = hodiny.get(u.t.id);
@@ -1706,6 +1709,7 @@ async function akceZPanelu(p: Player, raw: unknown) {
 
 /** klávesa nebo /skola: panel; bez web view nativní nabídka se stejnými akcemi */
 async function otevritPanel(p: Player, web = panelHrace(p).web) {
+  if (!(await muze(p, "school.use"))) return notify(p, T("msg.noPermission"), "warning");
   const pn = panelHrace(p);
   pn.web = web;
   pn.umistuje = false;
@@ -2170,6 +2174,7 @@ function nastaveniDef(): NastaveniDef<Player> {
     get: () => JSON.parse(JSON.stringify(N)) as SettingsObject,
     set: async (value, ctx) => {
       const ts = trServer();
+      if (!(await muzeVolajici(ctx.caller, "settings.edit"))) return { ok: false, message: trVolajici(ctx.caller)("msg.noPermission") };
       const r = overit(JSON.parse(JSON.stringify(value)) as Nastaveni, ts);
       if (r.chyby.length) return { ok: false, message: ts("admin.settings.invalid"), errors: r.chyby };
       const jazykPred = JSON.stringify(N.jazyk);
@@ -2181,6 +2186,7 @@ function nastaveniDef(): NastaveniDef<Player> {
       return trServer()(ok ? "admin.settings.saved" : "admin.settings.savedMemory");
     },
     reset: async (ctx) => {
+      if (!(await muzeVolajici(ctx.caller, "settings.edit"))) return { ok: false, message: trVolajici(ctx.caller)("msg.noPermission") };
       N = kopie(VYCHOZI);
       await most.storage.delete(KLIC.nastaveni);
       for (const p of Player.all()) if (profily.has(p.id)) poslatProfil(p);
@@ -2193,6 +2199,10 @@ function nastaveniDef(): NastaveniDef<Player> {
 const najit = (jmeno: unknown) => (jmeno && typeof jmeno === "object" ? (jmeno as Player) : Player.all().find((x) => x.nickname.toLowerCase() === String(jmeno ?? "").toLowerCase()) ?? null);
 /** jazyk hlášek akce Správy: kdo ji spustil (bez hráče výchozí jazyk serveru) */
 const trVolajici = (caller: unknown): Prekladac => (caller && typeof caller === "object" && typeof (caller as Player).id === "number" ? tr(caller as Player) : trServer());
+/** schopnost toho, kdo spustil akci Správy (konzole serveru bez hráče smí vše: Správa ji pustí jen adminovi) */
+const muzeVolajici = async (caller: unknown, s: Schopnost) =>
+  caller && typeof caller === "object" && typeof (caller as Player).id === "number" ? muze(caller as Player, s) : true;
+const nesmi = (caller: unknown) => ({ ok: false, message: trVolajici(caller)("msg.noPermission") });
 
 // popisky panelu Správy jsou společné pro server (výchozí jazyk), hlášky akcí v jazyce toho, kdo akci spustil
 const panel = registerAdminPanel("skola", () => {
@@ -2219,6 +2229,7 @@ const panel = registerAdminPanel("skola", () => {
           const t = trVolajici(caller);
           const p = najit(params.hrac);
           if (!p) return { ok: false, message: t("msg.playerOffline") };
+          if (p.id !== (caller as Player | undefined)?.id && !(await muzeVolajici(caller, "xp.view"))) return nesmi(caller);
           const pr = (await nactiProfil(p)).p;
           const st = stav(pr.xp, N.pravidla);
           return {
@@ -2235,6 +2246,7 @@ const panel = registerAdminPanel("skola", () => {
       {
         id: "dat", label: L("admin.give"), params: [{ name: "hrac", label: L("admin.param.player"), type: "player", required: true }, { name: "xp", label: "XP", type: "number", min: 1, max: 10000, default: 10 }],
         handler: async ({ params, caller }: ActionContext) => {
+          if (!(await muzeVolajici(caller, "xp.edit"))) return nesmi(caller);
           const t = trVolajici(caller);
           const p = najit(params.hrac);
           return p ? t.z(T("msg.xp.entry", { name: p.nickname, result: await pridatXp(p, Number(params.xp), T("msg.xp.reason.admin"), null) })) : { ok: false, message: t("msg.playerOffline") };
@@ -2243,6 +2255,7 @@ const panel = registerAdminPanel("skola", () => {
       {
         id: "nastavit", label: L("admin.set"), danger: true, params: [{ name: "hrac", label: L("admin.param.player"), type: "player", required: true }, { name: "xp", label: "XP", type: "number", min: 0, max: 100000, default: 0 }],
         handler: async ({ params, caller }: ActionContext) => {
+          if (!(await muzeVolajici(caller, "xp.edit"))) return nesmi(caller);
           const t = trVolajici(caller);
           const p = najit(params.hrac);
           return p ? t.z(T("msg.xp.entry", { name: p.nickname, result: await nastavitXp(p, Number(params.xp)) })) : { ok: false, message: t("msg.playerOffline") };
@@ -2264,6 +2277,7 @@ const panel = registerAdminPanel("skola", () => {
       {
         id: "zrusit", label: L("admin.cancelClass"), danger: true, confirm: L("admin.cancelClass.confirm"), params: [{ name: "id", label: L("admin.param.classId"), type: "number", required: true, min: 1 }],
         handler: async ({ params, caller }: ActionContext) => {
+          if (!(await muzeVolajici(caller, "class.delete"))) return nesmi(caller);
           const t = trVolajici(caller);
           const x = tridy.find((y) => y.id === Number(params.id));
           if (!x) return { ok: false, message: t("admin.cancelClass.none") };
@@ -2277,6 +2291,7 @@ const panel = registerAdminPanel("skola", () => {
         confirm: L("admin.primerLang.confirm"),
         params: [{ name: "jazyk", label: L("admin.param.lang"), type: "select", options: Object.keys(SLABIKARE).map((j) => ({ value: j, label: j })), default: vychoziJazyk() in SLABIKARE ? vychoziJazyk() : "cs", required: true }],
         handler: async ({ params, caller }: ActionContext) => {
+          if (!(await muzeVolajici(caller, "settings.edit"))) return nesmi(caller);
           const t = trVolajici(caller);
           const s = SLABIKARE[String(params.jazyk)];
           if (!s) return { ok: false, message: t("admin.primerLang.none") };
@@ -2292,6 +2307,7 @@ const panel = registerAdminPanel("skola", () => {
         description: L("admin.debug.description"),
         params: [{ name: "hrac", label: L("admin.param.player"), type: "player", default: "me", required: true }],
         handler: async ({ params, caller }: ActionContext) => {
+          if (!(await muzeVolajici(caller, "debug.view"))) return nesmi(caller);
           const t = trVolajici(caller);
           const p = najit(params.hrac);
           if (!p) return { ok: false, message: t("msg.playerOffline") };
@@ -2319,7 +2335,12 @@ Events.on("resourceStart", (name: string) => {
   if (name === "most") setTimeout(() => void safely("načíst", nacist()), 400);
   if (name === "kresby" && bezi) napojitKresby();
   if (name !== "skola" || bezi) return;
-  for (const p of Player.all()) send(p, EV.konfig, { ui: CFG.ui !== false } satisfies KonfigMsg); // restart školy: klienti už připojení
+  // restart školy: klienti už připojení dostanou nastavení a svůj jazyk znovu (jinak by zůstali u výchozího)
+  for (const p of Player.all()) {
+    send(p, EV.konfig, { ui: CFG.ui !== false } satisfies KonfigMsg);
+    jazykPoslan.delete(p.id);
+    void safely("jazyk", nactiJazyk(p));
+  }
   bezi = true;
   panel.attempt();
   popsatPrikazy();

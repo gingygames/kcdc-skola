@@ -145,7 +145,7 @@ Built in: `cs` (source of truth, complete) and `en`. Dictionaries are flat `key 
 Syntax: `{name}` parameters, plural forms `{n|one|few|many}` chosen per language (cs: 1 | 2–4 | other,
 en: 1 | other; other languages use `Intl.PluralRules` order). A parameter may be a nested message.
 
-Player language: own choice `/skola jazyk <code>` (`auto` resets; can be disabled in F10) → framework hook
+Player language (regional codes fall back to the base language: `en-US` → `en`): own choice `/skola jazyk <code>` (`auto` resets; can be disabled in F10) → framework hook
 `jazyk(pid)` → server default (F10 → Settings → School → Language). Missing keys fall back to the server default
 language, then to `cs`.
 

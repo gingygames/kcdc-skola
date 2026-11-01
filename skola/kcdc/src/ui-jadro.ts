@@ -35,7 +35,8 @@ pridatPreklady("cs", csKlient);
 pridatPreklady("en", enKlient);
 let jazykKlienta = ZDROJ;
 let vychozi = ZDROJ;
-const naJazyk: ((j: string) => void)[] = [];
+/** posluchači změny jazyka po částech UI: vymění-li se jen panel, posluchači karty zůstanou */
+const naJazyk = new Map<object, ((j: string) => void)[]>();
 
 /** text klienta v jazyce hráče */
 export const tk = (klic: string, a?: Parametry) => t(jazykKlienta, klic, a, vychozi);
@@ -46,7 +47,7 @@ Events.on(EV.jazyk, (m: unknown) => {
   jazykKlienta = kodJazyka(x.jazyk) || ZDROJ;
   vychozi = kodJazyka(x.vychozi) || ZDROJ;
   if (x.texty && typeof x.texty === "object") pridatPreklady(jazykKlienta, x.texty);
-  for (const cb of naJazyk) {
+  for (const cb of [...naJazyk.values()].flat()) {
     try {
       cb(jazykKlienta);
     } catch (e) {
@@ -79,18 +80,34 @@ const api: SkolaUiApi = {
     emit(UI.pryc);
   },
   otevrit: () => otevritPanel(),
-  nativni: () => {
-    ukazany = false;
-    emit(UI.otevrit, { web: false });
-  },
+  nativni: () => nativniNabidka(),
   pripraveno: () => emit(UI.hello),
   t: (k, a) => tk(k, a),
   texty: (predpony: string[]): Slovnik => oblast(jazykKlienta, predpony, vychozi),
   jazyk: () => jazykKlienta,
-  naJazyk: (cb) => void (typeof cb === "function" && naJazyk.push(cb)),
+  naJazyk: () => undefined, // každá část UI dostane vlastní (apiPro)
 };
 
+/** API pro jednu část UI: její posluchači jazyka zmizí s ní */
+function apiPro(b: object): SkolaUiApi {
+  return { ...api, naJazyk: (cb) => void (typeof cb === "function" && naJazyk.set(b, [...(naJazyk.get(b) ?? []), cb])) };
+}
+
+/** panel teď nejde: pryč s ním (i když jen čeká na stránku) a stejné akce v nativní nabídce */
+function nativniNabidka() {
+  const byl = ukazany;
+  ukazany = false;
+  try {
+    ui.panel?.schovat();
+  } catch {
+    // nic
+  }
+  if (byl) obnovitKartu();
+  emit(UI.otevrit, { web: false });
+}
+
 function odpojit(b: PanelBackend | KartaBackend | null) {
+  if (b) naJazyk.delete(b);
   try {
     b?.odpojit?.();
   } catch (e) {
@@ -101,26 +118,26 @@ function odpojit(b: PanelBackend | KartaBackend | null) {
 /** export setUi: vyměnit panel a/nebo kartu (null = žádné, jádro použije zálohu); owner = resource UI */
 export function setUi(x: Partial<SkolaUi> | null, owner: string): boolean {
   if (!x || typeof x !== "object") return false;
-  if (ui.owner && owner !== ui.owner) {
-    log(`UI ${ui.owner} nahrazeno UI ${owner}`);
-    naJazyk.length = 0; // posluchači jazyka patřili starému UI
-  }
+  if (ui.owner && owner !== ui.owner) log(`UI ${ui.owner} nahrazeno UI ${owner}`);
   if ("panel" in x) {
     if (ui.panel !== x.panel) {
       if (ukazany) schovatPanel();
       odpojit(ui.panel);
     }
+    const novy = ui.panel !== (x.panel ?? null);
     ui.panel = x.panel ?? null;
-    ui.panel?.pripojit?.(api);
+    if (novy && ui.panel) ui.panel.pripojit?.(apiPro(ui.panel));
   }
   if ("karta" in x) {
     if (ui.karta !== x.karta) odpojit(ui.karta);
+    const nova = ui.karta !== (x.karta ?? null);
     ui.karta = x.karta ?? null;
-    ui.karta?.pripojit?.(api);
+    if (nova && ui.karta) ui.karta.pripojit?.(apiPro(ui.karta));
     poslanoKarte = "";
   }
-  ui.owner = ui.panel || ui.karta ? owner || "?" : null;
-  log(`UI: panel ${ui.panel ? "ano" : "ne (nativní nabídka)"}, karta ${ui.karta ? "ano" : "ne (infotext)"}${ui.owner ? " od " + ui.owner : ""}`);
+  // vlastník platí i pro setUi({ panel: null, karta: null }): když jeho resource skončí, vrátí se výchozí UI
+  ui.owner = owner || "?";
+  log(`UI: panel ${ui.panel ? "ano" : "ne (nativní nabídka)"}, karta ${ui.karta ? "ano" : "ne (infotext)"} od ${ui.owner}`);
   obnovitKartu(true);
   return true;
 }
@@ -160,7 +177,6 @@ Events.on("resourceStop", (name: string) => {
   }
   if (name !== ui.owner) return;
   log(`UI ${name} skončilo: ${vychoziPovoleno && vychoziUi ? "zpět výchozí UI školy" : "záloha jádra"}`);
-  naJazyk.length = 0;
   pouzitVychozi();
 });
 
@@ -202,7 +218,7 @@ Events.on(UI.stav, (m: unknown) => {
   posledniSeq = Number(v.seq) || 0;
   cekajici = v;
   if (pozastaveno) return;
-  if (!ukazatPanel(v)) emit(UI.otevrit, { web: false });
+  if (!ukazatPanel(v)) nativniNabidka();
 });
 Events.on(UI.zavrit, () => {
   cekajici = null;
@@ -216,7 +232,7 @@ export function otevritPanel() {
   const p = ui.panel;
   emit(UI.otevrit, { web: !!p });
   // UI se ještě nenahrálo (web view bez hello): nativní nabídka, ať příkaz vždycky něco ukáže
-  if (p && p.pripraveny && !p.pripraveny()) setTimeout(() => void (ui.panel === p && !p.pripraveny?.() && emit(UI.otevrit, { web: false })), 4000);
+  if (p && p.pripraveny && !p.pripraveny()) setTimeout(() => void (ui.panel === p && !p.pripraveny?.() && nativniNabidka()), 4000);
 }
 
 /** stavba vybavení (umistovani.ts) nebo čtení nad listem (client.ts): panel ustoupí a do konce se neukáže.
