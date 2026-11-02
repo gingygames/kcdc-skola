@@ -6,11 +6,12 @@
 // mají Node včetně fs). Tady navíc:
 //   - admin práva: <modul>.admin NEBO admin (pravidlo kontraktu);
 //   - záloha práv bez mostu: config modulu (přezdívky adminů);
-//   - po startu mostu: KCDC pustí resourceStart "most" i most:ready dřív, než jdou exporty mostu přečíst, a shim
-//     by pak 5 s vracel zálohu. Proto se po startu mostu pár sekund ptáme na export přímo.
+//   - onChange: most naběhl po modulu nebo se vrátil po restartu (exporty už jdou číst), případně se zastavil.
+//     Shim to pozná sám (KCDC pustí resourceStart "most" i most:ready dřív, než jdou exporty přečíst).
+// Most není v resourceDependencies modulů: restart mostu by restartoval i je (most/CONTRACT.md).
 
 import {
-  configureMostFallback, hasMost, most as shimMost,
+  configureMostFallback, hasMost, most as shimMost, onMostChange,
 } from "../../../most/shim/most";
 import type {
   CustomItemDef, MenuOption, MenuSpec, MostApi, MostEconomy, MostIdentity, MostInventory, MostStorage, MostUi, NotifyKind, PlayerId,
@@ -30,26 +31,8 @@ export interface ShimOptions {
   log?: (text: string) => void;
 }
 
-let recheckUntil = 0;
-function api(): MostApi {
-  if (Date.now() < recheckUntil) {
-    try {
-      const a = Exports.get("most", "api") as MostApi | undefined;
-      if (a) return a;
-    } catch {
-      // ještě nejde
-    }
-  }
-  return shimMost();
-}
-const running = () => api() !== shimMost() || hasMost();
-
-/** most se právě spustil (resourceStart, most:ready): pár sekund číst export přímo */
-export function mostChanged() {
-  recheckUntil = Date.now() + 6000;
-}
-Events.on("resourceStart", (name: string) => void (name === "most" && mostChanged()));
-Events.on("most:ready", () => mostChanged());
+const api = (): MostApi => shimMost();
+const running = () => hasMost();
 
 const permMatch = (granted: string, perm: string) => granted === "*" || granted === perm || perm.startsWith(granted + ".");
 
@@ -131,7 +114,10 @@ export function createMost(opts: ShimOptions = {}) {
     },
   };
 
-  return { identity, perms, economy, inventory, storage, notify, ui, money, running, changed: mostChanged };
+  /** most naběhl po modulu / vrátil se po restartu (true), nebo se zastavil (false); vrací odhlášení */
+  const onChange = (f: (running: boolean) => void | Promise<void>) => onMostChange(f);
+
+  return { identity, perms, economy, inventory, storage, notify, ui, money, running, onChange };
 }
 
 export type Most = ReturnType<typeof createMost>;

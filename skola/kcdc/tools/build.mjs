@@ -42,8 +42,9 @@ const manifest = {
     clientScripts: ["client.js"],
     files: ["ui/**"],
     // závislosti startují dřív a modul se s nimi restartuje; bez nich běží dál (optional).
-    // Na sprava záviset nesmí: sprava závisí na modulech (cyklus).
-    resourceDependencies: [{ name: "most", optional: true }, { name: "kresby", optional: true }],
+    // Most tu není: jeho restart by restartoval i školu. Při bootu startuje první (priority v jeho manifestu)
+    // a škola se na něj napojí i později (most.onChange). Na sprava záviset nesmí: sprava závisí na modulech (cyklus).
+    resourceDependencies: [{ name: "kresby", optional: true }],
     exports: [
       // server
       "filtrText", "legibility", "stav", "xp", "pridatXp", "setHooks", "isBusy", "spravaPanels", "spravaSettings",

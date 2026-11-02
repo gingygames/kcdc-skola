@@ -11,8 +11,25 @@ export class Vec {
   }
 }
 
+/** změna stavu entity, jak ji dostal jeden klient: [entita, klíč, hodnota (undefined = smazaný), předchozí] */
+export type StavZmena = [number, string, any, any];
+
+/**
+ * Síť falešného serveru: kolik zpráv by odešlo klientům. Událost hráči (player.emit) = 1 zpráva, Events.emitAllClients
+ * = 1 zpráva každému hráči. Změna stavu entity (StateBag) = 1 zpráva každému, kdo entitu streamuje (stejný svět, do
+ * dosahStreamu m, a vlastník sám sebe): horní odhad, KCDC změny jednoho ticku pro jednoho klienta posílá v jedné zprávě.
+ * Pozdě příchozí dostane stav v počátečních datech entity (seed), samostatná zpráva to není.
+ */
+export interface FakeSit {
+  dosahStreamu: number;
+  udalosti: Map<string, number>;           // název události -> zpráv
+  stav: Map<string, number>;               // klíč stavu -> zpráv
+  bajty: number;                           // délka JSON všech zpráv (bez hlaviček)
+}
+
 export interface FakeServer {
   ctx: vm.Context;
+  sit: FakeSit;
   fire: (name: string, ...args: unknown[]) => void;
   emitted: [string, any[]][];              // Events.emit (mezi resources)
   toAll: [string, any][];
@@ -42,6 +59,67 @@ export function fakeServer(): FakeServer {
   const voice = { talking: new Set<number>(), range: new Map<number, number>(), tier: new Map<number, number>() };
   const tierRange = [3, 25, 50];
   const fire = (name: string, ...args: unknown[]) => (on.get(name) ?? []).forEach((f) => f(...args));
+  const sit: FakeSit = { dosahStreamu: 250, udalosti: new Map(), stav: new Map(), bajty: 0 };
+  const zprava = (m: Map<string, number>, k: string, n: number, json: string) => {
+    m.set(k, (m.get(k) ?? 0) + n);
+    sit.bajty += n * json.length;
+  };
+
+  /** kdo entitu e streamuje: ona sama (vlastník) a hráči ve stejném světě do dosahStreamu */
+  const streamuji = (e: Player) => Player.list.filter((o) => o === e || (o.virtualWorld === e.virtualWorld && o.position.distance(e.position) <= sit.dosahStreamu));
+
+  // StateBag jako v KCDC (Framework ~40.1): zapisuje jen server, hodnota do 4 KB (JSON), klíč do 64 bajtů, nejvýš 128
+  // klíčů; stejná hodnota se nepošle znovu (set vrátí false); onChange (klíč nebo null) a globální entityStateChange
+  class StateBag {
+    private data = new Map<string, { json: string; scope: string }>();
+    private handlers: [string | null, Fn][] = [];
+    constructor(private ent: Player) {}
+    get(key: string) {
+      const v = this.data.get(key);
+      return v === undefined ? undefined : JSON.parse(v.json);
+    }
+    has(key: string) {
+      return this.data.has(key);
+    }
+    keys() {
+      return [...this.data.keys()].sort();
+    }
+    toObject() {
+      return Object.fromEntries([...this.data].map(([k, v]) => [k, JSON.parse(v.json)]));
+    }
+    set(key: string, value: unknown, options: { scope?: "broadcast" | "owner" | "server" } = {}) {
+      if (Buffer.byteLength(key) > 64) throw new Error("StateBag.set: key is longer than 64 bytes");
+      const json = JSON.stringify(value) ?? "null";
+      if (Buffer.byteLength(json) > 4096) throw new Error("StateBag.set: value is larger than 4096 bytes");
+      const scope = options.scope ?? "broadcast";
+      const prev = this.data.get(key);
+      if (!prev && this.data.size >= 128) throw new Error("StateBag.set: entity holds 128 keys");
+      if (prev && prev.json === json && prev.scope === scope) return false;
+      this.data.set(key, { json, scope });
+      this.zmena(key, JSON.parse(json), prev ? JSON.parse(prev.json) : undefined, scope, json);
+      return true;
+    }
+    remove(key: string) {
+      const prev = this.data.get(key);
+      if (!prev) return false;
+      this.data.delete(key);
+      this.zmena(key, undefined, JSON.parse(prev.json), prev.scope, "null");
+      return true;
+    }
+    onChange(key: string | null, handler: Fn) {
+      const h: [string | null, Fn] = [key, handler];
+      this.handlers.push(h);
+      return () => void this.handlers.splice(this.handlers.indexOf(h), 1);
+    }
+    private zmena(key: string, value: unknown, previous: unknown, scope: string, json: string) {
+      for (const [k, f] of [...this.handlers]) if (k === null || k === key) f(key, value, previous);
+      fire("entityStateChange", this.ent, key, value, previous);
+      if (scope === "server") return;
+      const komu = scope === "owner" ? [this.ent] : streamuji(this.ent);
+      for (const o of komu) o.stavy.push([this.ent.id, key, value, previous]);
+      zprava(sit.stav, key, komu.length, json);
+    }
+  }
 
   class Player {
     static list: Player[] = [];
@@ -57,6 +135,9 @@ export function fakeServer(): FakeServer {
     appearance: { gender: "male" | "female" } = { gender: "male" };
     lookDirection = new Vec(0, 1, 0);
     spawned: [any, any][] = [];
+    /** změny stavu entit, které dostal klient tohoto hráče (streamuje je) */
+    stavy: StavZmena[] = [];
+    readonly state = new StateBag(this);
     constructor(public id: number, public nickname: string, public position: Vec) {}
     spawn(pos: any, rot: any) {
       this.spawned.push([pos, rot]);
@@ -89,6 +170,7 @@ export function fakeServer(): FakeServer {
     }
     emit(name: string, json?: string) {
       this.emitted.push([name, json ? JSON.parse(json) : undefined]);
+      zprava(sit.udalosti, name, 1, json ?? "");
     }
     getInventory() {
       return { ready: true, revision: 1, items: this.items, harvested: false, quickslots: null };
@@ -136,7 +218,10 @@ export function fakeServer(): FakeServer {
     Events: {
       on: (n: string, f: Fn) => (on.set(n, [...(on.get(n) ?? []), f]), () => {}),
       onClient: (n: string, f: Fn) => (onClient.set(n, f), () => {}),
-      emitAllClients: (n: string, payload: unknown) => void toAll.push([n, payload]),
+      emitAllClients: (n: string, payload: unknown) => {
+        toAll.push([n, payload]);
+        zprava(sit.udalosti, n, Player.list.length, typeof payload === "string" ? payload : JSON.stringify(payload) ?? "");
+      },
       emit: (n: string, ...args: unknown[]) => {
         emitted.push([n, args]);
         fire(n, ...args);
@@ -206,7 +291,7 @@ export function fakeServer(): FakeServer {
     fire("resourceStart", resource);
   };
   const client = (name: string, p: any, payload: unknown = {}) => onClient.get(name)!(p, payload);
-  return { ctx, fire, emitted, toAll, chat, dialogs, voice, exportsReg, props, onClient, players: Player.list, P: Player, client, load };
+  return { ctx, sit, fire, emitted, toAll, chat, dialogs, voice, exportsReg, props, onClient, players: Player.list, P: Player, client, load };
 }
 
 /** falešný resource: zaregistruje exporty pod jménem (most, sprava) */

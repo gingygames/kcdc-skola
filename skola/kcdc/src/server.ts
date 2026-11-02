@@ -165,6 +165,11 @@ async function nactiJazyk(p: Player, poslat = true): Promise<string> {
   return jazyk(p);
 }
 
+/** změnilo se nastavení jazyka (F10, reset, načtení z úložiště): všem připojeným jazyk znovu */
+const jazykVsem = () => {
+  for (const p of Player.all()) void safely("jazyk", nactiJazyk(p));
+};
+
 const jazykPoslan = new Set<number>();
 /** klient dostane jazyk a texty své oblasti (i jazyky a úpravy přidané serverem) */
 function poslatJazyk(p: Player) {
@@ -2051,8 +2056,17 @@ Events.on("playerCommand", (p, cmd, args) => {
   if (cmd.toLowerCase().replace(/^\//, "") === CFG.command) safely("/" + CFG.command, prikaz(p, args ?? []));
 });
 Events.onClient(EV.menu, (p: unknown) => void safely("panel", otevritPanel(p as Player)));
+/** zpráva od klienta: JSON řetězec nebo objekt; rozbitý JSON = null (klientovi se nevěří) */
+const zKlienta = (m: unknown): unknown => {
+  if (typeof m !== "string") return m;
+  try {
+    return JSON.parse(m || "{}");
+  } catch {
+    return null;
+  }
+};
 Events.onClient(UI.otevrit, (p: unknown, m: unknown) => {
-  const x = (typeof m === "string" ? JSON.parse(m || "{}") : m) as { web?: boolean } | null;
+  const x = zKlienta(m) as { web?: boolean } | null;
   void safely("panel", otevritPanel(p as Player, x?.web !== false));
 });
 Events.onClient(UI.hello, (p: unknown) => {
@@ -2066,7 +2080,7 @@ Events.onClient(UI.akce, (p: unknown, m: unknown) => void safely("akce panelu", 
 Events.onClient(UI.umisteno, (p: unknown, m: unknown) => void safely("umístění", umisteno(p as Player, m)));
 Events.onClient(EV.sklonit, (p: unknown) => void safely("čítanka", sklonit(p as Player)));
 Events.onClient(EV.zvednout, (p: unknown) => zvednout(p as Player));
-Events.onClient(EV.prst, (p: unknown, m: unknown) => prst(p as Player, typeof m === "string" ? JSON.parse(m) : m));
+Events.onClient(EV.prst, (p: unknown, m: unknown) => prst(p as Player, zKlienta(m)));
 Events.onClient(EV.psat, (p: unknown) => void safely("písanka", psatPisanku(p as Player).then((r) => notify(p as Player, r.text))));
 
 Events.on("playerReady", (p: Player) => {
@@ -2105,6 +2119,7 @@ function nacist(): Promise<void> {
 }
 
 async function nacistTed() {
+  const jazykPred = JSON.stringify(N.jazyk);
   try {
     const v = (await most.storage.get(KLIC.nastaveni)) as Partial<Nastaveni> | null;
     if (v) {
@@ -2115,6 +2130,8 @@ async function nacistTed() {
   } catch (e) {
     log(`nastavení: ${String(e)}`);
   }
+  // po restartu školy dostali hráči jazyk ještě před načtením nastavení (vestavěné cs)
+  if (JSON.stringify(N.jazyk) !== jazykPred) jazykVsem();
   try {
     const d = (await most.storage.get(KLIC.tridy)) as { dalsiId?: number; tridy?: Trida[] } | null;
     const nove = Array.isArray(d?.tridy) ? d!.tridy : [];
@@ -2220,16 +2237,18 @@ function nastaveniDef(): NastaveniDef<Player> {
       const jazykPred = JSON.stringify(N.jazyk);
       N = r.n;
       for (const p of Player.all()) if (profily.has(p.id)) poslatProfil(p);
-      if (JSON.stringify(N.jazyk) !== jazykPred) for (const p of Player.all()) void safely("jazyk", nactiJazyk(p));
+      if (JSON.stringify(N.jazyk) !== jazykPred) jazykVsem();
       const ok = await most.storage.set(KLIC.nastaveni, JSON.parse(JSON.stringify(N)));
       log(`${ctx.caller.nickname}: nastavení školy uloženo`);
       return trServer()(ok ? "admin.settings.saved" : "admin.settings.savedMemory");
     },
     reset: async (ctx) => {
       if (!(await muzeVolajici(ctx.caller, "settings.edit"))) return { ok: false, message: trVolajici(ctx.caller)("msg.noPermission") };
+      const jazykPred = JSON.stringify(N.jazyk);
       N = kopie(VYCHOZI);
       await most.storage.delete(KLIC.nastaveni);
       for (const p of Player.all()) if (profily.has(p.id)) poslatProfil(p);
+      if (JSON.stringify(N.jazyk) !== jazykPred) jazykVsem();
       log(`${ctx.caller.nickname}: nastavení školy vráceno na výchozí`);
       return trServer()("admin.settings.reset");
     },
@@ -2367,12 +2386,14 @@ const panel = registerAdminPanel("skola", () => {
 
 let bezi = false;
 const casovace: ReturnType<typeof setInterval>[] = [];
+// most naběhl po škole nebo se vrátil po restartu (škola se s ním nerestartuje, most není v závislostech):
+// třídy, nastavení a profily znovu z jeho úložiště, až jdou jeho exporty číst
+most.onChange((zpet) => void (zpet && bezi && safely("načíst", nacist())));
 Events.on("resourceStart", (name: string) => {
   if (name === "sprava") {
     poslatNastaveniPozdeji(nastaveniDef, "skola", log);
     popsatPrikazy();
   }
-  if (name === "most") setTimeout(() => void safely("načíst", nacist()), 400);
   if (name === "kresby" && bezi) napojitKresby();
   if (name !== "skola" || bezi) return;
   // restart školy: klienti už připojení dostanou nastavení a svůj jazyk znovu (jinak by zůstali u výchozího)

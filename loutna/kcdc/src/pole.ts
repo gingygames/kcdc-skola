@@ -157,6 +157,26 @@ export function poslatNastaveni(def: unknown, owner: string, log: (t: string) =>
   }
 }
 
+/** příkaz pro nápovědu a našeptávání v konzoli Správy (sprava ChatCommandDef) */
+export interface PrikazPopis { name: string; usage?: string; help?: string; perm?: string; sub?: string[] }
+const popisy = new Map<string, ReturnType<typeof setTimeout>>();
+/** Popíše chatové příkazy modulu Správě (`registerChatCommands`), s pokusy jako u nastavení: exporty Správy jdou
+ *  přečíst až chvíli po jejím startu. Bez Správy nic. */
+export function popsatPrikazy(owner: string, defs: () => PrikazPopis[], pokusy = 10) {
+  const t = popisy.get(owner);
+  if (t) clearTimeout(t);
+  popisy.set(owner, setTimeout(() => {
+    popisy.delete(owner);
+    try {
+      const reg = Exports.get("sprava", "registerChatCommands") as ((o: string, d: PrikazPopis[]) => void) | undefined;
+      if (typeof reg === "function") return void reg(owner, defs());
+    } catch {
+      // Správa neběží nebo ještě nejde přečíst
+    }
+    if (pokusy > 0) popsatPrikazy(owner, defs, pokusy - 1);
+  }, 300));
+}
+
 const odlozene = new Map<string, ReturnType<typeof setTimeout>>();
 /**
  * Pošle nastavení, až půjdou číst exporty Správy: KCDC je v její `resourceStart` ještě nevydá („not running“),

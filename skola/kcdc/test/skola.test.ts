@@ -128,6 +128,24 @@ describe("škola", () => {
     if (process.env.SKOLA_UI_DUMP) writeFileSync(join(root, "tools/ui-dev/pohledy.json"), JSON.stringify(pohledy, null, 1));
   });
 
+  it("most naběhne po škole a restartuje se za běhu: škola jede dál a třídy načte z jeho úložiště", async () => {
+    const manifest = JSON.parse(readFileSync(join(root, "dist/skola/package.json"), "utf8"));
+    expect(manifest.mafiahub.resourceDependencies.map((d: any) => d.name)).toEqual(["kresby"]);
+    const s = server();
+    await vi.advanceTimersByTimeAsync(10);
+    const cteni: string[] = [];
+    const spustit = () => fakeResource(s, "most", { storage: { get: async (k: string) => void (k === "skola:tridy" && cteni.push(k)), set: async () => true } });
+    spustit();
+    expect(cteni).toEqual([]); // resourceStart mostu: exporty ještě nejdou číst
+    await vi.advanceTimersByTimeAsync(300);
+    expect(cteni).toEqual(["skola:tridy"]);
+    s.fire("resourceStop", "most");
+    s.exportsReg.delete("most");
+    spustit();
+    await vi.advanceTimersByTimeAsync(300);
+    expect(cteni).toEqual(["skola:tridy", "skola:tridy"]);
+  });
+
   it("průvodce: tabule a školní lavice z pózy náhledu; stůl je prop, lavice smart object, listy desky kreseb", async () => {
     const s = server();
     await trida(s);
@@ -589,6 +607,34 @@ describe("škola: opravy z recenze (jazyk po startu, regionální kódy, schopno
     expect(s.last(s.hans, "skola:jazyk")).toMatchObject({ jazyk: "en" });
     await s.cmd(s.hans, "jazyk en_GB");
     expect(notes(s, s.hans).at(-1)).toBe("School language: en.");
+  });
+
+  it("výchozí jazyk z úložiště po startu a reset v F10 pošlou hráčům jazyk znovu; rozbitý JSON od klienta nespadne", async () => {
+    const s = server();
+    await flush();
+    expect(s.last(s.hans, "skola:jazyk")).toMatchObject({ jazyk: "cs" }); // nastavení ještě nenačtené
+    // most naběhne s uloženým nastavením (výchozí en): po načtení dostanou hráči angličtinu
+    const ulozeno = new Map<string, unknown>([["skola:nastaveni", { jazyk: { vychozi: "en", volba: true } }]]);
+    fakeResource(s, "most", {
+      storage: {
+        get: async (k: string) => ulozeno.get(k) ?? null,
+        set: async (k: string, v: unknown) => (ulozeno.set(k, v), true),
+        delete: async (k: string) => ulozeno.delete(k),
+        keys: async (pre: string) => [...ulozeno.keys()].filter((k) => k.startsWith(pre)),
+      },
+      identity: { getCharacterId: async (pid: number) => "c" + pid },
+      perms: { has: async (pid: number) => pid === s.henry.id },
+      notify: () => {},
+    });
+    await vi.advanceTimersByTimeAsync(500);
+    expect(s.last(s.hans, "skola:jazyk")).toMatchObject({ jazyk: "en", vychozi: "en" });
+    // reset v F10 vrátí výchozí cs i hráčům
+    expect(await s.exp("spravaSettings")().reset({ caller: s.henry })).toBe("Výchozí nastavení.");
+    expect(ulozeno.has("skola:nastaveni")).toBe(false);
+    await flush();
+    expect(s.last(s.hans, "skola:jazyk")).toMatchObject({ jazyk: "cs", vychozi: "cs" });
+    expect(() => s.client("skola:uiOtevrit", s.hans, "{rozbité")).not.toThrow();
+    expect(() => s.client("skola:prst", s.hans, "{rozbité")).not.toThrow();
   });
 
   it("F10 akce respektují schopnosti (háček opravneni): Přidat XP bez xp.edit nejde", async () => {
