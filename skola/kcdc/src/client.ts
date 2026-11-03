@@ -294,6 +294,7 @@ async function otevritCteni(m: CteniMsg) {
     Camera.setShot({ position: v3(eye), lookAt: v3(at), duration: GLIDE });
   } catch (e) {
     log("kamera: " + String(e));
+    emit(EV.zvednout); // server už hráče vede jako čtenáře: zvednout hlavu i tam
     return;
   }
   try {
@@ -543,7 +544,7 @@ function hlidatNapovedu() {
   ukazInfotext();
   obnovitKartu(); // dialog, čtení: karta se schová a zase ukáže
 }
-setInterval(hlidatNapovedu, 250);
+const hlidaniNapovedy = setInterval(hlidatNapovedu, 250);
 
 // ---------------------------------------------------------------------------
 // kresby: název kresby v nápovědě akce („Prohlédnout …“) podle gramotnosti tohohle hráče
@@ -576,6 +577,7 @@ Exports.register("stopReading", () => zvednout(true));
 
 Events.on("resourceStop", (name: string) => {
   if (name !== "skola") return;
+  clearInterval(hlidaniNapovedy); // klientské resources sdílejí isolate: časovač by běžel i po zastavení
   zvednout(false);
   for (const k of [...hinty.keys()]) hint(k, null, () => undefined);
   napoveda = "";

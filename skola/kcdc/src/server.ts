@@ -1,6 +1,6 @@
 // Škola - serverová část pro Kingdoms Connected (KCDC): výuka čtení a psaní u písaře.
 //
-// * Všechno ovládá panel školy (web view ui/, klávesa J nebo /skola): server skládá pohled a provádí akce, bez web
+// * Všechno ovládá panel školy (web view ui/, /skola): server skládá pohled a provádí akce, bez web
 //   view se stejné akce ukážou v nativní nabídce.
 // * Písař (právo skola.ucit nebo háček jeUcitel z frameworku serveru) založí třídu a průvodce ho provede zařízením:
 //   tabule (deska kreseb na zdi nebo na stojanu), školní lavice (stůl a lavice pro dva, listy žáků na stole), případně
@@ -18,7 +18,7 @@
 // SKOLA_CONFIG.hooks): jeUcitel, progresNacti, progresUlozit, lekcePovolit. Nastavení: F10 → Nastavení → Škola.
 
 import { createMost, type MenuOption } from "../../../loutna/kcdc/src/most";
-import { registerAdminPanel, type ActionContext } from "../../../loutna/kcdc/src/sprava";
+import { registerAdminPanel } from "../../../loutna/kcdc/src/sprava";
 import { nactiSchopnosti, poslatNastaveni, poslatNastaveniPozdeji, type NastaveniDef } from "../../../loutna/kcdc/src/pole";
 import type { SettingsObject } from "../../../sprava/src/settings-types";
 import { decode } from "../../../kresby/kcdc/src/shared/codec";
@@ -276,19 +276,24 @@ async function cid(p: Player): Promise<string> {
 
 const nacitani = new Map<number, Promise<{ cid: string; p: Progres }>>();
 
-/** profil hráče; souběžná volání čekají na jedno načtení (jinak by poslední uložení přepsalo XP) */
-function nactiProfil(p: Player): Promise<{ cid: string; p: Progres }> {
+/**
+ * profil hráče; souběžná volání čekají na jedno načtení (jinak by poslední uložení přepsalo XP);
+ * znovu = nebrat z paměti (most naběhl po škole: profil ze zálohy shimu by jinak přepsal XP v mostu)
+ */
+function nactiProfil(p: Player, znovu = false): Promise<{ cid: string; p: Progres }> {
   const bezi = nacitani.get(p.id);
-  if (bezi) return bezi;
-  const pr = nactiProfilTed(p).finally(() => nacitani.delete(p.id));
+  if (bezi && !znovu) return bezi;
+  // rozběhnuté načtení (ještě ze staré zálohy) nechat doběhnout a pak číst znovu
+  const dal = () => nactiProfilTed(p, true);
+  const pr: Promise<{ cid: string; p: Progres }> = (bezi ? bezi.then(dal, dal) : nactiProfilTed(p, znovu)).finally(() => void (nacitani.get(p.id) === pr && nacitani.delete(p.id)));
   nacitani.set(p.id, pr);
   return pr;
 }
 
-async function nactiProfilTed(p: Player): Promise<{ cid: string; p: Progres }> {
+async function nactiProfilTed(p: Player, znovu = false): Promise<{ cid: string; p: Progres }> {
   const c = await cid(p);
   const old = profily.get(p.id);
-  if (old && old.cid === c) return old;
+  if (old && old.cid === c && !znovu) return old;
   let pr: Progres | null = null;
   try {
     pr = cizi.h.progresNacti ? await cizi.h.progresNacti(c) : ((await most.storage.get(KLIC.progres(c))) as Progres | null);
@@ -683,7 +688,7 @@ interface Ucastnik {
   pid: number;
   jmeno: string;
   od: number;
-  ms: number; // čas ve třídě
+  ms: number; // čas ve třídě (od příchodu na hodinu, viz od)
   cetl: boolean;
   psal: boolean;
 }
@@ -762,6 +767,9 @@ function pridatUcastnika(h: Hodina, p: Player) {
   const u = Player.getById(h.ucitel)?.nickname;
   info(p, T("msg.lesson.joined", { teacher: u ?? T("msg.scribeGen") }));
 }
+
+/** přítomnost v % od chvíle, kdy žák na hodinu přišel (pozdní příchozí veřejné třídy může XP dostat také) */
+const pritomnostPct = (u: Ucastnik) => (u.ms / Math.max(1, Date.now() - u.od)) * 100;
 
 /** po 5 s: přítomnost, noví příchozí (veřejná třída), odchod učitele */
 const TICK = 5000;
@@ -871,7 +879,7 @@ async function konecHodiny(p: Player, h: Hodina, volby: Record<string, string> |
   if (!kratka) {
     for (const u of h.ucastnici.values()) {
       if (!Player.getById(u.pid)) continue;
-      const pritomnost = (u.ms / Math.max(1, Date.now() - h.zacatek)) * 100;
+      const pritomnost = pritomnostPct(u);
       if (pritomnost < N.hodina.minPritomnost) {
         notify(p, T("msg.lesson.lowPresence", { name: u.jmeno, pct: Math.round(pritomnost) }), "warning");
         continue;
@@ -1362,7 +1370,7 @@ function slabikarUi(): UiStrana[] {
 
 /** návrh XP na konci hodiny: účast při dost přítomnosti, čtení když četl, psaní když má uznanou písanku */
 function navrh(h: Hodina, u: Ucastnik): string {
-  const pritomnost = (u.ms / Math.max(1, Date.now() - h.zacatek)) * 100;
+  const pritomnost = pritomnostPct(u);
   if (pritomnost < N.hodina.minPritomnost) return "0";
   return "u" + (u.cetl ? "c" : "") + (u.psal ? "p" : "");
 }
@@ -1385,7 +1393,7 @@ function hodinaUi(h: Hodina, tt: Prekladac): NonNullable<UiView["hodina"]> {
       return {
         pid: u.pid, jmeno: u.jmeno, stupen: nazevStupne(tt, st), xp: profily.get(u.pid)?.p.xp ?? 0,
         // po 5 %: panel písaře se pak neposílá znovu každých 5 s jen kvůli pohybu docházky
-        pritomnost: Math.min(100, Math.floor(((u.ms / Math.max(1, Date.now() - h.zacatek)) * 100) / 5) * 5),
+        pritomnost: Math.min(100, Math.floor((pritomnostPct(u)) / 5) * 5),
         sedi: !!pl && mistoU(pl, true)?.t === t, cte: h.cte === u.pid, cetl: u.cetl, psal: u.psal,
         pisanka: x ? { skore: Math.round(x.skore * 100) / 100, stav: x.stav } : null, navrh: navrh(h, u),
       };
@@ -1656,11 +1664,16 @@ async function provest(p: Player, id: string, hodnota?: string): Promise<Vyslede
       if (arg === "konec") return (pn.konec = h), null;
       if (arg === "rozdat" || arg === "bezxp") {
         let volby: Record<string, string> | null = null;
-        try {
-          // bez schopnosti lesson.xp (např. pomocný písař frameworku) hodina skončí bez XP
-          volby = arg === "bezxp" || !(await muze(p, "lesson.xp")) ? {} : hodnota ? (JSON.parse(hodnota) as Record<string, string>) : null;
-        } catch {
-          volby = null;
+        // bez schopnosti lesson.xp (např. pomocný písař frameworku) hodina skončí bez XP
+        if (arg === "bezxp" || !(await muze(p, "lesson.xp"))) volby = {};
+        else if (hodnota) {
+          // rozbitý formulář (vlastní UI) není „návrh podle hodiny“: XP by se rozdalo bez písaře
+          try {
+            volby = JSON.parse(hodnota) as Record<string, string>;
+          } catch {
+            return chyba("msg.lesson.badForm");
+          }
+          if (!volby || typeof volby !== "object" || Array.isArray(volby)) return chyba("msg.lesson.badForm");
         }
         pn.konec = undefined;
         return konecHodiny(p, h, volby);
@@ -2165,7 +2178,8 @@ async function nacistTed() {
   } catch (e) {
     log(`třídy: ${String(e)}`);
   }
-  for (const p of Player.all()) void nactiProfil(p).then(() => poslatProfil(p));
+  // profily znovu z úložiště (po náběhu mostu by paměť držela XP ze zálohy shimu) a hráčům poslat
+  for (const p of Player.all()) void safely("profil", nactiProfil(p, true).then(() => poslatProfil(p)));
 }
 
 function respawnLaviceStop(t: Trida) {
@@ -2255,12 +2269,27 @@ function nastaveniDef(): NastaveniDef<Player> {
   };
 }
 
-const najit = (jmeno: unknown) => (jmeno && typeof jmeno === "object" ? (jmeno as Player) : Player.all().find((x) => x.nickname.toLowerCase() === String(jmeno ?? "").toLowerCase()) ?? null);
+/**
+ * Hráč, jak ho Správa posílá handlerům (sprava/src/panel-types.ts PlayerRef): přes Exports jde mezi resources jen kopie bez
+ * prototypu, nativní Player by dorazil prázdný. Volající i parametry typu player jsou tedy { id, nickname }; celý hráč jen
+ * přes Player.getById(ref.id). Starší Správa posílala Player: ten má id a nickname také, zachází se s ním stejně.
+ */
+interface HracRef {
+  id: number;
+  nickname: string;
+}
+/** kontext akce panelu Správy (ActionContext Správy; caller jako ref, nikdy ne jako Player) */
+interface Volani {
+  caller: HracRef;
+  params: Record<string, any>;
+}
+const jeRef = (x: unknown): x is HracRef => !!x && typeof x === "object" && typeof (x as HracRef).id === "number";
+/** hráč z parametru typu player (ref, starší Správa: Player nebo jméno); null = není online */
+const najit = (hrac: unknown) => (jeRef(hrac) ? Player.getById(hrac.id) ?? null : Player.all().find((x) => x.nickname.toLowerCase() === String(hrac ?? "").toLowerCase()) ?? null);
 /** jazyk hlášek akce Správy: kdo ji spustil (bez hráče výchozí jazyk serveru) */
-const trVolajici = (caller: unknown): Prekladac => (caller && typeof caller === "object" && typeof (caller as Player).id === "number" ? tr(caller as Player) : trServer());
+const trVolajici = (caller: unknown): Prekladac => (jeRef(caller) ? tr(caller.id) : trServer());
 /** schopnost toho, kdo spustil akci Správy (konzole serveru bez hráče smí vše: Správa ji pustí jen adminovi) */
-const muzeVolajici = async (caller: unknown, s: Schopnost) =>
-  caller && typeof caller === "object" && typeof (caller as Player).id === "number" ? muze(caller as Player, s) : true;
+const muzeVolajici = async (caller: unknown, s: Schopnost) => (jeRef(caller) ? muze(caller.id, s) : true);
 const nesmi = (caller: unknown) => ({ ok: false, message: trVolajici(caller)("msg.noPermission") });
 
 // popisky panelu Správy jsou společné pro server (výchozí jazyk), hlášky akcí v jazyce toho, kdo akci spustil
@@ -2277,18 +2306,21 @@ const panel = registerAdminPanel("skola", () => {
         // písař (i bez admina) otevře panel školy z F10: založení třídy, průvodce, hodina; F10 se zavře, panel po ní
         id: "panel", label: L("admin.openPanel"), perm: "skola.ucit",
         description: L("admin.openPanel.description"),
-        handler: ({ caller }: ActionContext) => {
-          setTimeout(() => void safely("panel z F10", otevritPanel(caller as Player, true)), 350);
+        handler: ({ caller }: Volani) => {
+          setTimeout(() => {
+            const p = Player.getById(caller.id); // ref ze Správy: celý hráč až tady (mezitím mohl odejít)
+            if (p) void safely("panel z F10", otevritPanel(p, true));
+          }, 350);
           return { ok: true, message: trVolajici(caller)("admin.openPanel.opening"), close: true };
         },
       },
       {
         id: "profil", label: L("admin.profile"), params: [{ name: "hrac", label: L("admin.param.player"), type: "player", default: "me", required: true }],
-        handler: async ({ params, caller }: ActionContext) => {
+        handler: async ({ params, caller }: Volani) => {
           const t = trVolajici(caller);
           const p = najit(params.hrac);
           if (!p) return { ok: false, message: t("msg.playerOffline") };
-          if (p.id !== (caller as Player | undefined)?.id && !(await muzeVolajici(caller, "xp.view"))) return nesmi(caller);
+          if (p.id !== caller?.id && !(await muzeVolajici(caller, "xp.view"))) return nesmi(caller);
           const pr = (await nactiProfil(p)).p;
           const st = stav(pr.xp, N.pravidla);
           return {
@@ -2304,7 +2336,7 @@ const panel = registerAdminPanel("skola", () => {
       },
       {
         id: "dat", label: L("admin.give"), params: [{ name: "hrac", label: L("admin.param.player"), type: "player", required: true }, { name: "xp", label: "XP", type: "number", min: 1, max: 10000, default: 10 }],
-        handler: async ({ params, caller }: ActionContext) => {
+        handler: async ({ params, caller }: Volani) => {
           if (!(await muzeVolajici(caller, "xp.edit"))) return nesmi(caller);
           const t = trVolajici(caller);
           const p = najit(params.hrac);
@@ -2313,7 +2345,7 @@ const panel = registerAdminPanel("skola", () => {
       },
       {
         id: "nastavit", label: L("admin.set"), danger: true, params: [{ name: "hrac", label: L("admin.param.player"), type: "player", required: true }, { name: "xp", label: "XP", type: "number", min: 0, max: 100000, default: 0 }],
-        handler: async ({ params, caller }: ActionContext) => {
+        handler: async ({ params, caller }: Volani) => {
           if (!(await muzeVolajici(caller, "xp.edit"))) return nesmi(caller);
           const t = trVolajici(caller);
           const p = najit(params.hrac);
@@ -2322,7 +2354,7 @@ const panel = registerAdminPanel("skola", () => {
       },
       {
         id: "tridy", label: L("admin.classes"),
-        handler: ({ caller }: ActionContext) => {
+        handler: ({ caller }: Volani) => {
           const t = trVolajici(caller);
           return {
             ok: true, message: t("admin.classes.summary", { classes: tridy.length, lessons: hodiny.size }),
@@ -2335,7 +2367,7 @@ const panel = registerAdminPanel("skola", () => {
       },
       {
         id: "zrusit", label: L("admin.cancelClass"), danger: true, confirm: L("admin.cancelClass.confirm"), params: [{ name: "id", label: L("admin.param.classId"), type: "number", required: true, min: 1 }],
-        handler: async ({ params, caller }: ActionContext) => {
+        handler: async ({ params, caller }: Volani) => {
           if (!(await muzeVolajici(caller, "class.delete"))) return nesmi(caller);
           const t = trVolajici(caller);
           const x = tridy.find((y) => y.id === Number(params.id));
@@ -2349,7 +2381,7 @@ const panel = registerAdminPanel("skola", () => {
         description: L("admin.primerLang.description"),
         confirm: L("admin.primerLang.confirm"),
         params: [{ name: "jazyk", label: L("admin.param.lang"), type: "select", options: Object.keys(SLABIKARE).map((j) => ({ value: j, label: j })), default: vychoziJazyk() in SLABIKARE ? vychoziJazyk() : "cs", required: true }],
-        handler: async ({ params, caller }: ActionContext) => {
+        handler: async ({ params, caller }: Volani) => {
           if (!(await muzeVolajici(caller, "settings.edit"))) return nesmi(caller);
           const t = trVolajici(caller);
           const s = SLABIKARE[String(params.jazyk)];
@@ -2357,7 +2389,7 @@ const panel = registerAdminPanel("skola", () => {
           N = overit({ ...N, pravidla: { ...N.pravidla, poradi: s.poradi }, slabikar: kopie(s.slabikar) }).n;
           await most.storage.set(KLIC.nastaveni, JSON.parse(JSON.stringify(N)));
           for (const p of Player.all()) if (profily.has(p.id)) poslatProfil(p);
-          log(`${(caller as Player).nickname}: slabikář ${params.jazyk}`);
+          log(`${caller.nickname}: slabikář ${params.jazyk}`);
           return t("admin.primerLang.done", { lang: String(params.jazyk), n: N.slabikar.length });
         },
       },
@@ -2365,7 +2397,7 @@ const panel = registerAdminPanel("skola", () => {
         id: "ladeni", label: L("admin.debug"), perm: "skola.debug",
         description: L("admin.debug.description"),
         params: [{ name: "hrac", label: L("admin.param.player"), type: "player", default: "me", required: true }],
-        handler: async ({ params, caller }: ActionContext) => {
+        handler: async ({ params, caller }: Volani) => {
           if (!(await muzeVolajici(caller, "debug.view"))) return nesmi(caller);
           const t = trVolajici(caller);
           const p = najit(params.hrac);

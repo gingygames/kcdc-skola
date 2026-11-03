@@ -122,6 +122,7 @@ const en: Record<string, string> = {
   "msg.lesson.playerNotInClass": "That player is not in the class.",
   "msg.lesson.added": "{name} is at the lesson.",
   "msg.lesson.inOtherLesson": "{name} is at another lesson.",
+  "msg.lesson.badForm": "The lesson-end form is broken; no XP was given. Try again.",
 
   // reading over the reader
   "msg.read.copybookTitle": "Copybook: {name}",
@@ -413,7 +414,7 @@ const en: Record<string, string> = {
   "set.lesson.minMinutes": "Shortest lesson",
   "set.lesson.minMinutes.help": "A shorter lesson gives no XP.",
   "set.lesson.minPresence": "Minimum presence",
-  "set.lesson.minPresence.help": "How much of the lesson a pupil must spend in the class to get XP.",
+  "set.lesson.minPresence.help": "How much of the lesson (counted from when the pupil joined it) a pupil must spend in the class to get XP.",
   "set.lesson.public": "Anyone in the class may join the lesson",
   "set.lesson.deskReach": "Seat at a table (reach)",
   "set.lesson.deskReach.help": "How close to a seat a pupil must be to lean over the sheets.",

@@ -58,6 +58,12 @@ If something cannot be done through them, extend the extension point (and its te
 Hooks replace defaults. Register them from your resource at runtime (they disappear when your resource stops) or
 statically in `skola_config.js` (`SKOLA_CONFIG.hooks`):
 
+Runtime registrations (`setHooks`, `addTranslations`, `setUi`) live in skola's own state, so they are also lost
+when **skola** restarts (including the cascade when `kresby` restarts). Either list `skola` in your
+`resourceDependencies` so your resource restarts with it, or re-register on
+`Events.on("resourceStart", n => n === "skola" && …)` with a short `setTimeout` retry (`Exports.get` throws
+while the resource is still Loading).
+
 ```js
 const setHooks = Exports.get("skola", "setHooks");
 setHooks({
@@ -89,11 +95,14 @@ Server exports (`Exports.get("skola", name)`):
 |---|---|
 | `filtrText(pid, text, seed?)` | text as this player reads it (1:1 per character) |
 | `legibility(pid, text, seed?)` | 0..1 in steps of 0.1 for native books (`Book.open`) |
-| `stav(pid)`, `xp(pid)`, `pridatXp(pid, xp, reason)` | literacy state, XP, award XP (no daily caps) |
-| `can(pid, capability)` | permission check with all hooks applied |
-| `roles(pid)`, `capabilities()` | roles and capabilities of a player; capability → role table |
+| `stav(pid)`, `xp(pid)`, `pridatXp(pid, xp, reason)` (async) | literacy state, XP, award XP (no daily caps; `pridatXp` returns a Promise) |
+| `can(pid, capability)` (async) | permission check with all hooks applied |
+| `roles(pid)` (async), `capabilities()` | roles and capabilities of a player; capability → role table |
 | `addTranslations(lang, dict, owner)` | add a language or override texts (section 3) |
-| `languages()`, `language(pid, code?)`, `translate(pid, key, params?)` | languages; get/set a player's language; translate a key |
+| `languages()`, `language(pid, code?)` (async), `translate(pid, key, params?)` | languages; get/set a player's language; translate a key |
+
+Lesson XP guard for integrators: presence (`hodina.minPritomnost`) is measured from the moment the pupil joined the
+lesson, not from its start, so a late joiner of a public class can still earn XP.
 | `setHooks(hooks, owner)`, `isBusy(pid)` | hooks; is the player reading right now |
 | `spravaPanels()`, `spravaSettings()` | F10 panel and settings for `sprava` |
 
@@ -153,7 +162,9 @@ Add a language (pick one):
 
 - **Config** (`skola_config.js`): `jazyky: { de: { "page.close": "Schließen", ... } }`.
 - **Runtime** from your resource: `Exports.get("skola", "addTranslations")("de", dict, "my-resource")`.
-  Removed automatically when your resource stops; clients get updated texts immediately.
+  Removed automatically when your resource stops; clients get updated texts immediately. Also gone after a
+  restart of skola itself: re-register on `resourceStart` of `skola` (with a `setTimeout` retry) or depend on
+  `skola` in `resourceDependencies` (section 1).
 - **In the repository**: add `src/lang/de-server.ts` and `de-klient.ts`, register them in `src/lang/index.ts`,
   run the tests (`test/jazyk.test.ts` enforces identical keys and parameters against `cs`).
 
@@ -170,7 +181,9 @@ missing glyphs.
 
 Do not edit `src/vychozi-ui/` for a different look: write your own UI resource and attach it with `setUi`. It
 replaces the default UI at runtime (no config change needed); set `SKOLA_CONFIG.ui = false` if you want the default
-never to appear (not even before your resource starts or after it stops).
+never to appear (not even before your resource starts or after it stops). The registration dies with a restart of
+skola: the `resourceDependencies` entry in the example below restarts your resource with it (otherwise re-register
+on `resourceStart` of `skola`, section 1).
 Contract: `src/ui-api.ts` (version `VERZE_UI = 1`).
 
 ```js

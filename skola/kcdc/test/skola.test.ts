@@ -89,6 +89,8 @@ function server(config: object = {}) {
 }
 
 const notes = (s: any, p: any) => s.chat.filter(([id]: any) => id === p.id).map(([, t]: any) => t as string);
+/** hráč, jak ho Správa posílá handlerům panelu a nastavení: jen { id, nickname } (sprava/src/panel-types.ts PlayerRef) */
+const ref = (p: any) => ({ id: p.id, nickname: p.nickname });
 const dump = (k: string, v: unknown) => void (pohledy[k] = JSON.parse(JSON.stringify(v)));
 
 /** Henry projde průvodce: tabule na zdi, školní lavice (Hans sedí na místě 1 u x=10) */
@@ -537,21 +539,21 @@ describe("škola", () => {
     const panel = ex("spravaPanels")()[0];
     expect(panel.actions.map((a: any) => a.id)).toEqual(["panel", "profil", "dat", "nastavit", "tridy", "zrusit", "slabikarJazyka", "ladeni"]);
     expect(panel.actions[0]).toMatchObject({ perm: "skola.ucit", label: "Otevřít panel školy" });
-    expect(await panel.actions[0].handler({ caller: s.henry, params: {}, panel: "skola", action: "panel" })).toMatchObject({ close: true });
+    expect(await panel.actions[0].handler({ caller: ref(s.henry), params: {}, panel: "skola", action: "panel" })).toMatchObject({ close: true });
     await vi.advanceTimersByTimeAsync(400);
     expect(s.ui(s.henry)).toMatchObject({ obrazovka: "vitej" }); // panel školy po zavření F10
-    const r = await panel.actions[1].handler({ caller: s.henry, params: { hrac: s.hans }, panel: "skola", action: "profil" });
+    const r = await panel.actions[1].handler({ caller: ref(s.henry), params: { hrac: ref(s.hans) }, panel: "skola", action: "profil" });
     expect(r.info.find((x: any) => x.label === "XP").value).toBe(800);
     // nastavení ve Správě: chyby se neuloží
     const def = ex("spravaSettings")();
     const v = def.get();
     v.pravidla.xpSlova = 10;
-    const bad = await def.set(v, { caller: s.henry });
+    const bad = await def.set(v, { caller: ref(s.henry) });
     expect(bad.ok).toBe(false);
     expect(bad.errors.some((e: any) => e.path === "pravidla.xpSlova")).toBe(true);
     const good = def.get();
     good.slabikar[0].text = "Nový text";
-    expect(await def.set(good, { caller: s.henry })).toBe("Uloženo, platí hned.");
+    expect(await def.set(good, { caller: ref(s.henry) })).toBe("Uloženo, platí hned.");
   });
 });
 
@@ -629,7 +631,7 @@ describe("škola: opravy z recenze (jazyk po startu, regionální kódy, schopno
     await vi.advanceTimersByTimeAsync(500);
     expect(s.last(s.hans, "skola:jazyk")).toMatchObject({ jazyk: "en", vychozi: "en" });
     // reset v F10 vrátí výchozí cs i hráčům
-    expect(await s.exp("spravaSettings")().reset({ caller: s.henry })).toBe("Výchozí nastavení.");
+    expect(await s.exp("spravaSettings")().reset({ caller: ref(s.henry) })).toBe("Výchozí nastavení.");
     expect(ulozeno.has("skola:nastaveni")).toBe(false);
     await flush();
     expect(s.last(s.hans, "skola:jazyk")).toMatchObject({ jazyk: "cs", vychozi: "cs" });
@@ -642,12 +644,12 @@ describe("škola: opravy z recenze (jazyk po startu, regionální kódy, schopno
     s.exp("setHooks")({ opravneni: (_pid: number, sch: string) => (sch === "xp.edit" ? false : undefined) }, "muj-fw");
     const panel = s.exp("spravaPanels")()[0];
     const dat = panel.actions.find((a: any) => a.id === "dat");
-    const r = await dat.handler({ caller: s.henry, params: { hrac: s.hans, xp: 10 } });
+    const r = await dat.handler({ caller: ref(s.henry), params: { hrac: ref(s.hans), xp: 10 } });
     expect(r).toMatchObject({ ok: false, message: "Na to nemáš oprávnění." });
     expect(s.exp("xp")(s.hans.id)).toBe(0);
     const profil = panel.actions.find((a: any) => a.id === "profil");
-    expect(await profil.handler({ caller: s.hans, params: { hrac: s.henry } })).toMatchObject({ ok: false }); // cizí gramotnost jen s xp.view
-    expect(await profil.handler({ caller: s.hans, params: { hrac: s.hans } })).toMatchObject({ ok: true }); // svou ano
+    expect(await profil.handler({ caller: ref(s.hans), params: { hrac: ref(s.henry) } })).toMatchObject({ ok: false }); // cizí gramotnost jen s xp.view
+    expect(await profil.handler({ caller: ref(s.hans), params: { hrac: ref(s.hans) } })).toMatchObject({ ok: true }); // svou ano
   });
 });
 
@@ -665,5 +667,67 @@ describe("škola: výkon (audit 1. 11.)", () => {
     expect(po).toBeGreaterThan(0);
     await vi.advanceTimersByTimeAsync(30000); // 6 ticků bez změny
     expect(pocet()).toBe(po);
+  });
+});
+
+describe("škola: opravy z recenze 3. 11. (profil po náběhu mostu, přítomnost od příchodu, rozbitý formulář)", () => {
+  beforeEach(() => void vi.useFakeTimers({ now: Date.UTC(2026, 9, 29, 9) }));
+  afterEach(() => void vi.useRealTimers());
+
+  it("most naběhne po škole: profil ze zálohy shimu se vymění za profil z mostu a další XP se přičte k němu", async () => {
+    const s = server();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(await s.exp("pridatXp")(2, 5, "test")).toContain("+5 XP");
+    expect(s.exp("xp")(2)).toBe(5); // záloha shimu (most neběží)
+    // most má pro stejnou postavu (shim bez steamId: nick:hans) uložených 100 XP
+    const ulozeno = new Map<string, unknown>([["skola:progres/nick:hans", { xp: 100 }]]);
+    fakeResource(s, "most", {
+      storage: {
+        get: async (k: string) => ulozeno.get(k) ?? null,
+        set: async (k: string, v: unknown) => (ulozeno.set(k, v), true),
+        delete: async (k: string) => ulozeno.delete(k),
+        keys: async (pre: string) => [...ulozeno.keys()].filter((k) => k.startsWith(pre)),
+      },
+      identity: { getCharacterId: async (pid: number) => "nick:" + s.players.find((p: any) => p.id === pid)!.nickname.toLowerCase() },
+      perms: { has: async () => false },
+      notify: () => {},
+    });
+    await vi.advanceTimersByTimeAsync(500);
+    expect(s.exp("xp")(2)).toBe(100);
+    expect(s.last(s.hans, "skola:profil")).toMatchObject({ xp: 100 });
+    expect(await s.exp("pridatXp")(2, 5, "test")).toContain("+5 XP");
+    expect((ulozeno.get("skola:progres/nick:hans") as any).xp).toBe(105); // ne 10: záloha shimu nepřepsala most
+  });
+
+  it("pozdní příchozí veřejné třídy: přítomnost se měří od jeho příchodu, XP dostat může", async () => {
+    const s = server();
+    await trida(s);
+    await s.akce(s.henry, "hodina:zacit"); // Hans a Tereza
+    await vi.advanceTimersByTimeAsync(8 * 60000);
+    s.far.position = new Vec(3, 0, 0); // Daleko přijde po 8 minutách
+    await vi.advanceTimersByTimeAsync(4 * 60000 + 100);
+    const k = await s.akce(s.henry, "hodina:konec");
+    const dal = k.hodina.zaci.find((z: any) => z.jmeno === "Daleko");
+    expect(dal.navrh).toBe("u"); // dřív 4/12 min = 33 % < 60 %
+    expect(dal.pritomnost).toBeGreaterThanOrEqual(95); // první tick po příchodu ještě nepočítá, zaokrouhleno po 5 %
+    await s.akce(s.henry, "hodina:rozdat", JSON.stringify({ 2: "u", 3: "u", 4: "0" }));
+    expect(s.ui(s.henry).hlaska.text).toBe("Hodina skončila. Hans: +5 XP; Daleko: +5 XP");
+    expect(s.exp("xp")(3)).toBe(5);
+  });
+
+  it("rozbitý formulář konce (vlastní UI) hodinu neukončí a XP nerozdá", async () => {
+    const s = server();
+    await trida(s);
+    await s.akce(s.henry, "hodina:zacit");
+    await vi.advanceTimersByTimeAsync(12 * 60000);
+    await s.akce(s.henry, "hodina:konec");
+    for (const spatne of ["{rozbité", "[1]", "null"]) {
+      await s.akce(s.henry, "hodina:rozdat", spatne);
+      expect(s.ui(s.henry).hlaska).toMatchObject({ text: "Formulář konce hodiny je rozbitý, XP se nerozdalo. Zkus to znovu.", druh: "warn" });
+      expect(s.ui(s.henry).obrazovka).toBe("konec");
+    }
+    expect(s.exp("xp")(2)).toBe(0);
+    await s.akce(s.henry, "hodina:rozdat", JSON.stringify({ 2: "u", 4: "0" }));
+    expect(s.ui(s.henry).hlaska.text).toBe("Hodina skončila. Hans: +5 XP");
   });
 });

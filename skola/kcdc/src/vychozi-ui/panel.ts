@@ -68,6 +68,19 @@ export function vytvoritPanel(): PanelBackend {
     return true;
   }
 
+  /** web view pryč (odpojení, zastavení školy): schovat nestačí, stránka by v prohlížeči hry zůstala */
+  function zrusitView() {
+    if (view < 0) return;
+    try {
+      Web.destroyView(view);
+    } catch (e) {
+      log("panel: web view nejde zrušit: " + String(e));
+    }
+    view = -1;
+    pripravena = false;
+    ukazany = false;
+  }
+
   /** createView hází výjimku, dokud prohlížeč hry není hotový: zkoušet znovu */
   function sView(pak: () => void, pokusy = 10) {
     if (vytvorit()) return pak();
@@ -110,6 +123,7 @@ export function vytvoritPanel(): PanelBackend {
     },
     odpojit() {
       schovat();
+      zrusitView();
       api = null;
     },
     pripraveny: () => maWeb() && pripravena,

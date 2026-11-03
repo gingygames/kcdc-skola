@@ -15,11 +15,12 @@ const LIST = { pos: [10, 1.2, 0.806], n: [0, -0.139, 0.99], w: 0.34, h: 0.227 };
 function klient(ui = true, blizko = true) {
   const sent: [string, any][] = [];
   const c = makeClient((n, p) => void sent.push([n, p]), { script });
-  Object.assign((c.ctx as any).Web, { resizeView: () => true, setViewPosition: () => true }); // falešný klient kreseb je nemá
+  const zrusene: number[] = [];
+  Object.assign((c.ctx as any).Web, { resizeView: () => true, setViewPosition: () => true, destroyView: (v: number) => (zrusene.push(v), true) }); // falešný klient kreseb je nemá
   if (!ui) c.deliver("skola:konfig", JSON.stringify({ ui: false }));
   // třída do 60 m (daleko od hráče, bez nápovědy): výchozí UI si nahraje stránky předem (bez třídy je nevytváří)
   if (blizko) c.deliver("skola:okoli", JSON.stringify({ dosah: 1.6, tridy: [{ id: 99, mista: [[500, 500, 0]], tabule: null, zadani: false, moje: false }] }));
-  return { ...c, sent, posl: (ev: string) => sent.filter(([n]) => n === ev).map(([, p]) => p) };
+  return { ...c, sent, zrusene, posl: (ev: string) => sent.filter(([n]) => n === ev).map(([, p]) => p) };
 }
 const bezTextu = (e: [string, any][]) => e.filter(([n]) => n !== "skola:texty");
 
@@ -276,6 +277,7 @@ describe("klient školy", () => {
     c.deliver("skola:ui", JSON.stringify({ seq: 7, obrazovka: "trida", ucitel: true, titulek: "Škola", ja: {}, akce: [] }));
     expect(pohledy.map((v) => v.seq)).toEqual([7]);
     expect(vychozi.shown).toBe(false); // výchozí panel je odpojený
+    expect(c.zrusene).toEqual([1, 2]); // a jeho web view (i karty) zničené, ne jen schované
     api.akce("hodina:zacit");
     expect(c.posl("skola:uiAkce")).toEqual([{ seq: 7, id: "hodina:zacit" }]);
     api.zavreno();
@@ -297,7 +299,12 @@ describe("klient školy", () => {
     await vi.advanceTimersByTimeAsync(1600); // panel hráč výše zavřel: pohled na cestě ho 1,5 s neotevře
     c.deliver("skola:ui", JSON.stringify({ seq: 8, obrazovka: "trida", ucitel: true, titulek: "Škola", ja: {}, akce: [] }));
     expect(pohledy).toHaveLength(1);
-    expect(vychozi.shown).toBe(true);
+    // výchozí panel má nové web view (staré bylo zničené): po hello ukáže čekající pohled
+    const novy = c.views.filter((v) => v.handlers.has("skola:uiHello")).at(-1)!;
+    expect(novy).not.toBe(vychozi);
+    novy.handlers.get("skola:uiHello")!();
+    expect(novy.shown).toBe(true);
+    expect(novy.emitted.at(-1)).toMatchObject(["skola:ui", { seq: 8 }]);
   });
 
   it("framework vymění jen panel: výchozí karta dál dostává texty v novém jazyce; setUi(null) a konec frameworku vrátí výchozí UI", async () => {
@@ -311,9 +318,11 @@ describe("klient školy", () => {
     // framework UI vypne úplně (null), pak skončí: výchozí panel se vrátí
     setUi({ panel: null, karta: null }, "fw");
     c.deliver("resourceStop", "fw");
-    panel.handlers.get("skola:uiHello")!();
+    const novy = c.views.filter((v) => v.handlers.has("skola:uiHello")).at(-1)!; // původní panel byl při výměně zničen, výchozí UI si vytvořilo nové
+    expect(novy).not.toBe(panel);
+    novy.handlers.get("skola:uiHello")!();
     c.deliver("skola:ui", JSON.stringify({ seq: 1, obrazovka: "trida", ucitel: true, titulek: "Škola", ja: {}, akce: [] }));
-    expect(panel.shown).toBe(true);
+    expect(novy.shown).toBe(true);
   });
 
   it("jazyk hráče: nápověda u stolu a texty stránky anglicky", async () => {
@@ -405,5 +414,25 @@ describe("klient školy", () => {
     on.get("end")!(null, false);
     expect(c.gizmos.has("umistit-obrys")).toBe(false);
     expect(c.posl("skola:umisteno").at(-1)).toEqual({ konec: true });
+  });
+
+  it("zastavení školy: hlídání nápovědy se zruší a web view panelu i karty se zničí (sdílený isolate klienta)", async () => {
+    const c = klient();
+    expect(c.views).toHaveLength(2); // panel a karta nahrané předem u třídy
+    const pred = vi.getTimerCount();
+    c.deliver("resourceStop", "skola");
+    expect([...c.zrusene].sort()).toEqual([1, 2]);
+    expect(vi.getTimerCount()).toBeLessThan(pred); // setInterval(hlidatNapovedu) pryč
+  });
+
+  it("čtení: když kamera selže, klient hned pošle zvednout (server by hráče dál vedl jako čtenáře)", async () => {
+    const c = klient();
+    (c.ctx as any).Camera.setShot = () => {
+      throw new Error("kamera není");
+    };
+    c.deliver("skola:cist", JSON.stringify(cist()));
+    await vi.advanceTimersByTimeAsync(100);
+    expect(c.posl("skola:zvednout")).toHaveLength(1);
+    expect(c.screens).toHaveLength(0);
   });
 });

@@ -11,6 +11,17 @@ fluent reading. Other resources can show any text "as this player reads it".
   `setUi`, or turn it off with `SKOLA_CONFIG.ui = false`.
 - Permissions for teachers, admins and debuggers (`/skola debug`).
 
+## Preview
+
+The default UI rendered outside the game (Czech texts; English is built in and chosen by `SKOLA_CONFIG.jazyk` or
+per player). The lesson card is the small HUD card every student and the teacher see during a lesson.
+
+| Classroom panel (teacher) | Lesson in progress |
+|---|---|
+| ![Classroom](preview/classroom.png) | ![Lesson](preview/lesson.png) |
+
+![Lesson card: teacher, student, building a desk](preview/lesson-card.png)
+
 ## Resources
 
 | Resource | | |

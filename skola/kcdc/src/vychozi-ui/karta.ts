@@ -99,8 +99,19 @@ export function vytvoritKartu(): KartaBackend {
       if (maWeb()) vytvorit();
     },
     odpojit() {
-      if (view >= 0 && ukazana) Web.hideView(view);
+      // web view pryč (odpojení, zastavení školy): schovat nestačí, stránka by v prohlížeči hry zůstala
+      if (view >= 0) {
+        try {
+          if (ukazana) Web.hideView(view);
+          Web.destroyView(view);
+        } catch (e) {
+          log("karta hodiny: web view nejde zrušit: " + String(e));
+        }
+      }
+      view = -1;
+      pripravena = false;
       ukazana = false;
+      pokusy = 0;
       api = null;
     },
     ukazat,

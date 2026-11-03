@@ -3,7 +3,9 @@
 // Dvě cesty, obě podporované správou:
 //   1. modul běží po správě: Exports.get("sprava", "registerPanel")(def, "<jméno resource>") - teď a při resourceStart správy;
 //   2. správa naběhne po modulu: stáhne si export "spravaPanels" (funkce vracející panely) - musí být v manifestu.
-// Správa kontroluje oprávnění (`perm` panelu / akce), převede parametry podle typu (player -> Player) a volá handler.
+// Správa kontroluje oprávnění (`perm` panelu / akce), převede parametry podle typu a volá handler. Hráče (caller i parametr
+// "player") posílá jen jako { id, nickname } (PlayerRef): od KCDC 1.7.3 má každý resource vlastní runtime a nativní Player by
+// přes Exports dorazil jako prázdný objekt. Celý hráč: Player.getById(ref.id), může být null (mezitím odešel).
 // Bez správy zůstávají akce jako /příkazy ověřené přes most.perms.
 
 type Awaitable<T> = T | Promise<T>;
@@ -24,8 +26,14 @@ export interface ParamDef {
   help?: string;
 }
 
+/** hráč, jak ho handler dostane v `caller` a v parametrech typu "player" (sprava/src/panel-types.ts) */
+export interface PlayerRef {
+  id: number;
+  nickname: string;
+}
+
 export interface ActionContext {
-  caller: Player;
+  caller: PlayerRef;
   params: Record<string, any>;
   panel: string;
   action: string;
@@ -73,8 +81,24 @@ export function registerAdminPanel(owner: string, panel: () => PanelDef, log: (t
       return false;
     }
   };
+  // resourceStart přijde, když je Správa ještě ve stavu Loading: Exports.get na ni v handleru hází a čekat se v něm nesmí,
+  // proto opakovat časovačem (250 ms, nejvýš 20 s; sprava/AGENTS.md oddíl 1)
+  let retry: ReturnType<typeof setTimeout> | null = null;
+  const attemptLater = (tries = 80): void => {
+    if (retry !== null) clearTimeout(retry);
+    retry = setTimeout(() => {
+      retry = null;
+      if (!attempt() && tries > 0) attemptLater(tries - 1);
+    }, 250);
+  };
   Events.on("resourceStart", (name) => {
-    if (name === "sprava") attempt();
+    if (name === "sprava") attemptLater();
+  });
+  Events.on("resourceStop", (name) => {
+    if (name === "sprava" && retry !== null) {
+      clearTimeout(retry);
+      retry = null;
+    }
   });
   return { attempt, spravaPanels: () => [panel()] };
 }

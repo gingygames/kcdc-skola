@@ -87,7 +87,7 @@ Přesunout = staví se znovu na novém místě se stejným id (tabule si nese, c
 - **Sdílené textury**: obecný vzhled čítanky, předlohy písanek a připravené tabule jsou sdílené kresby kreseb (`drawingPrepare` + `boardShow`): jedna textura pro všechny stoly místo jedné na každý stůl. Hotová písanka se do textury nepeče vůbec (písař ji kontroluje přes list).
 - **Písanka**: písař zadá předlohu (světlé tahy ručního písma). Student obtahuje inkoustem (relace kreseb, předlohu nejde vzít zpět) a odevzdá. Písař dostane pomocné skóre obtažení (`shared/porovnani.ts`, F1 pokrytí a přesnosti), písanku si prohlédne (kamera na list studenta), uzná nebo vrátí.
 - **Třída patří písaři**: cizí písař ji nemění ani v ní neučí (admin školy ano), může si založit vlastní jinde. Když kresby přijdou o desky třídy, škola je při startu kreseb postaví znovu.
-- **XP** na konci hodiny: písař ve formuláři zaškrtne u každého žáka účast / čtení / psaní (návrh: účast při dost přítomnosti, čtení když četl, psaní když má uznanou písanku). Ochrany: nejkratší hodina, nejmenší přítomnost v %, denní strop studenta a strop od jednoho písaře, ne sám sobě. XP se zrcadlí do nativní stopy (`player.addXp("scholarship")`, nastavitelné a vypínatelné).
+- **XP** na konci hodiny: písař ve formuláři zaškrtne u každého žáka účast / čtení / psaní (návrh: účast při dost přítomnosti, čtení když četl, psaní když má uznanou písanku). Ochrany: nejkratší hodina, nejmenší přítomnost v % (měří se od chvíle, kdy žák na hodinu přišel, pozdní příchozí veřejné třídy tedy XP dostat může), denní strop studenta a strop od jednoho písaře, ne sám sobě. XP se zrcadlí do nativní stopy (`player.addXp("scholarship")`, nastavitelné a vypínatelné).
 
 ## Stupně čitelnosti
 

@@ -123,6 +123,7 @@ const cs: Record<string, string> = {
   "msg.lesson.playerNotInClass": "Ten hráč není ve třídě.",
   "msg.lesson.added": "{name} je na hodině.",
   "msg.lesson.inOtherLesson": "{name} je na jiné hodině.",
+  "msg.lesson.badForm": "Formulář konce hodiny je rozbitý, XP se nerozdalo. Zkus to znovu.",
 
   // čtení nad čítankou
   "msg.read.copybookTitle": "Písanka: {name}",
@@ -414,7 +415,7 @@ const cs: Record<string, string> = {
   "set.lesson.minMinutes": "Nejkratší hodina",
   "set.lesson.minMinutes.help": "Kratší hodina XP nedá.",
   "set.lesson.minPresence": "Nejmenší přítomnost",
-  "set.lesson.minPresence.help": "Kolik hodiny musí student být ve třídě, aby dostal XP.",
+  "set.lesson.minPresence.help": "Kolik hodiny (od svého příchodu na ni) musí student být ve třídě, aby dostal XP.",
   "set.lesson.public": "Na hodinu se může připojit kdokoli ve třídě",
   "set.lesson.deskReach": "Místo u stolu (dosah)",
   "set.lesson.deskReach.help": "Jak blízko místa musí student být, aby se sklonil nad listy.",
